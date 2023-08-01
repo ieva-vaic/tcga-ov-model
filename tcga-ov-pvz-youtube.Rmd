@@ -11,8 +11,15 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r, echo=F}
 BiocManager::install("edgeR")
 BiocManager::install("genefilter")
-BiocManager::install("BioinformaticsFMRP/TCGAbiolinksGUI.data")
-BiocManager::install("BioinformaticsFMRP/TCGAbiolinks")
+BiocManager::install("BioinformaticsFMRP/TCGAbiolinksGUI.data", force = TRUE)
+BiocManager::install("BioinformaticsFMRP/TCGAbiolinks", force = TRUE)
+# BiocManager::install("TCGAbiolinks") # and abobe doesnt work, installing related packages
+#install.packages(c("boot", "class", "cluster", "codetools", "foreign", "KernSmooth", "lattice", "MASS", "Matrix", "mgcv", "nlme", "nnet", "rpart", "spatial", "survival")) # did not work instaling packages thus installing dependaciens ‘biomaRt’, ‘GenomicRanges’, ‘XML’, ‘rvest’, ‘SummarizedExperiment’, ‘xml2’, ‘httr’
+#BiocManager::install("biomaRt")
+# ‘GenomicRanges’, ‘XML’, ‘rvest’, ‘SummarizedExperiment’, ‘xml2’, ‘httr’ 
+#BiocManager::install(c("XML", "rvest", "SummarizedExperiment", "xml2", "httr" ))
+#withr::with_envvar(c(R_REMOTES_NO_ERRORS_FROM_WARNINGS="true"), remotes::install_github('BioinformaticsFMRP/TCGAbiolinks'))
+devtools::install_github("BioinformaticsFMRP/TCGAbiolinks")
 ```
 
 ```{r, echo=FALSE}
