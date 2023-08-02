@@ -9,7 +9,7 @@ library("TCGAbiolinks")
 library("caret")
 library("dplyr")
 library("tdyr")
-
+library("tidyverse")
 tcga_data = readRDS(file = "tcga_data.RDS") #pakeiciau pavadinima
 pheno <- readRDS(file = "/home/ieva/tcga-ov-data//pheno.RDS")
 #####################################################################
@@ -112,6 +112,48 @@ x_train = primary_tumor[train_ids, ]
 x_test  = primary_tumor[!train_ids, ]
 
 #save 3 failus i csv
-write.csv(weird_cases, "weird_cases.csv" )
-write.csv(x_train, "train_data.csv" )
-write.csv(x_test, "test_data.csv" )
+write.csv(weird_cases, "weird_cases.csv", quote = F, row.names = F)
+write.csv(x_train, "train_data.csv", , quote = F, row.names = F)
+write.csv(x_test, "test_data.csv", , quote = F, row.names = F )
+
+
+#o ner taip kad dabar tik clinical data atsiskyrem?
+#jauciu reiketu atsiskirti ir assay data
+counts_ov <- assay(tcga_data)
+counts_ov <- as.data.frame(t(counts_ov))
+
+test_barcodes <- x_test[['barcode']]
+test_counts <- counts_ov[rownames(counts_ov) %in% test_barcodes, ]
+
+train_barcodes <- x_train[['barcode']]
+train_counts <- counts_ov[rownames(counts_ov) %in% train_barcodes, ]
+
+weird_barcodes <- weird_cases[['barcode']]
+weird_counts <- counts_ov[rownames(counts_ov) %in% weird_barcodes, ]
+
+#jsemioin counts and filtered clinical
+counts_ov <- tibble::rownames_to_column(counts_ov, "row_names")
+counts_ov$barcode <- counts_ov$row_names
+counts_ov <- counts_ov[!names(counts_ov) %in% 'row_names']
+#"test data"
+test_data_df = list(x_test, counts_ov)
+test_data_df <- test_data_df %>% reduce(semi_join, by='barcode')
+View(test_data_df)
+
+train_data_df = list(x_train, counts_ov)
+train_data_df <- train_data_df %>% reduce(semi_join, by='barcode')
+View(train_data_df)
+
+weird_data_df = list(weird_cases, counts_ov)
+weird_data_df <- weird_data_df %>% reduce(semi_join, by='barcode')
+View(weird_data_df)
+
+#save everthing to cvs
+write.csv(test_counts, "test_counts.csv", quote = F, row.names = F)
+write.csv(train_counts, "train_counts.csv", quote = F, row.names = F)
+write.csv(weird_counts, "weird_counts.csv", quote = F, row.names = F )
+
+
+write.csv(test_data_df, "test_data_df.csv", quote = F, row.names = F)
+write.csv(train_data_df, "train_data_df.csv", quote = F, row.names = F)
+write.csv(weird_data_df, "weird_data_df.csv", quote = F, row.names = F )
