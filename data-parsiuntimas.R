@@ -26,7 +26,7 @@ library("SummarizedExperiment")
 # library("gProfileR")
 # library("genefilter")
 
-
+setwd("/home/ieva/tcga-ov-data/")
 GDCprojects = getGDCprojects()
 GDCprojects[c("project_id", "name")] #aš noriu TCGA-OV
 
@@ -61,6 +61,7 @@ tcga_data <- GDCprepare(query_TCGA,
 dim(tcga_data)
 
 colnames(colData(tcga_data))
+pheno <- as.data.frame(colData(tcga_data))
 
 table(tcga_data@colData$figo_stage)
 
@@ -75,7 +76,10 @@ head(rowData(tcga_data))     # ensembl id and gene id of the first 6 genes.
 # Save the data as a file, if you need it later, you can just load this file
 # instead of having to run the whole pipeline again
 saveRDS(object = tcga_data,
-        file = "/home/ieva/tcga-ov-data/tcga_data.RDS",
+        file = "tcga_data.RDS",
         compress = FALSE)
-tcga_data = readRDS(file = "/home/ieva/tcga-ov-data/tcga_data.RDS") #load data
-View(assay(tcga_data)) #view gene expression information
+
+saveRDS(object = pheno,
+        file = "pheno.RDS",
+        compress = FALSE)
+
