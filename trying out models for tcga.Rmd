@@ -1,4 +1,13 @@
-#l
+---
+title: "trying models for tcga ov"
+output: pdf_document
+date: "2023-08-03"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r setup, include=FALSE}
 library(dplyr)
 library(ggplot2)
 setwd("~/tcga-ov-data")
@@ -12,10 +21,9 @@ train_cleaned_joined <- full_join(train_clinical_cleaned, train_counts_cleaned, 
 
 nrow(train_cleaned_joined)
 ncol(train_cleaned_joined)
-
-#siaip clean etape geriau sita perkelti
-#rasti outcome dead alive stulpeli, padaryt table patikrinimui
-table(train_cleaned_joined$vital_status, useNA='a')
+```
+# Base
+```{r}
 #glm(outcome ~ x)
 model <- glm(vital_status == "Dead" ~ 1, data= train_cleaned_joined, family = "binomial" ) #vidutine tikimybe, nuo efektines grupes patikirint art tikrai
 summary(model) #intercepta rodo, rodo p ar daugiau uz 0
@@ -28,25 +36,41 @@ table(pred_classes, train_cleaned_joined$vital_status) #paglyginimas su real rei
 a <- train_cleaned_joined$vital_status == "Dead" #cia reikalinga palyginimui tikru reiksmiu
 v <- pred_classes == a  #cia lyginam predictions su reiksmem
 sum(v) / nrow(train_cleaned_joined) #loss accurary siuo atveju paskaiciuoja same skaiciu 0.6311239
-
+```
+# Stage
+```{r}
 #2nd model 
 model_clinical <- glm(vital_status == "Dead" ~ figo_stage, data= train_cleaned_joined,
              na.action = na.exclude, family = "binomial" ) #vidutine tikimybe, nuo efektines grupes bet patikirint ar tikrai
 summary(model_clinical) #intercepta rodo
-
-ggplot(train_cleaned_joined, aes(x=vital_status  , y=figo_stage)) +
-  geom_boxplot() #optional see your stuff mapped
-
 pred_prob_clin <- predict(model_clinical, type = "response")
-
 pred_classes_clin <- pred_prob_clin > 0.5
 table(pred_classes_clin, train_cleaned_joined$vital_status)
 a <- train_cleaned_joined$vital_status == "Dead"
 v <- pred_classes_clin == a  
 sum(v, na.rm = T) / nrow(train_cleaned_joined) #loss accurary for figo not cleaned 0.6455331
+```
 
+# Age
+```{r}
+model_age <- glm(vital_status == "Dead" ~ age_at_diagnosis, data= train_cleaned_joined,
+                      na.action = na.exclude, family = "binomial" ) #vidutine tikimybe, nuo efektines grupes bet patikirint ar tikrai
+summary(model_age) #intercepta rodo
+ggplot(train_cleaned_joined, aes(x=vital_status  , y=age_at_diagnosis/365)) +
+  geom_boxplot() #optional see your stuff mapped
+pred_prob_age <- predict(model_age, type = "response")
+pred_classes_age <- pred_prob_age> 0.5
+v <- pred_classes_age == a 
+sum(v, na.rm = T) / nrow(train_cleaned_joined) #0.6282421
+```
+# race
+```{r}
+model_race <- glm(vital_status == "Dead" ~ race, data= train_cleaned_joined,
+                 na.action = na.exclude, family = "binomial" ) #vidutine tikimybe, nuo efektines grupes bet patikirint ar tikrai
+summary(model_race) #intercepta rodo
+pred_prob_race <- predict(model_race, type = "response")
+pred_classes_race <- pred_prob_race > 0.5
+v <- pred_classes_race == a 
+sum(v, na.rm = T) / nrow(train_cleaned_joined) #0.6570605
+```
 
-#pagalvisim ar glm modelis is the best
-#pagalvisim base clinikiniu duomenu 
-#pagalvot outcome gal cotinuous gal yr iki progreso 
-#looss iverti paglvot

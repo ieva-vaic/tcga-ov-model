@@ -8,7 +8,7 @@ setwd("~/tcga-ov-data")
 library("TCGAbiolinks")
 library("caret")
 library("dplyr")
-library("tdyr")
+library("tidyr")
 library("tidyverse")
 tcga_data = readRDS(file = "tcga_data.RDS") #pakeiciau pavadinima
 pheno <- readRDS(file = "/home/ieva/tcga-ov-data//pheno.RDS")
@@ -133,7 +133,6 @@ train_counts <- counts_ov[rownames(counts_ov) %in% train_barcodes, ]
 weird_barcodes <- weird_cases[['barcode']]
 weird_counts <- counts_ov[rownames(counts_ov) %in% weird_barcodes, ]
 
-
 #save everthing to cvs
 write.csv(test_counts, "test_counts.csv", quote = F, row.names = F)
 write.csv(train_counts, "train_counts.csv", quote = F, row.names = F)
@@ -159,3 +158,22 @@ write.csv(weird_counts, "weird_counts.csv", quote = F, row.names = F )
 # write.csv(test_data_df, "test_data_df.csv", quote = F, row.names = F)
 # write.csv(train_data_df, "train_data_df.csv", quote = F, row.names = F)
 # write.csv(weird_data_df, "weird_data_df.csv", quote = F, row.names = F )
+
+
+# for most normal analyses I want a matrix as it is given by assay function
+#option 1: go back and filter matrix
+counts_ov <- assay(tcga_data)
+# counts_ov <- as.data.frame(t(counts_ov))
+# counts_ov$barcode <- rownames(counts_ov)
+
+# train_barcodes <- x_train[['barcode']]
+# train_counts <- counts_ov[rownames(counts_ov) %in% train_barcodes, ]
+train_counts2 <- counts_ov[, colnames(counts_ov) %in% train_barcodes]
+saveRDS(train_counts2, "train_count_matrix.RDS")
+
+#same su kitais count matrixes
+test_counts2 <- counts_ov[, colnames(counts_ov) %in% test_barcodes]
+saveRDS(test_counts2, "test_count_matrix.RDS")
+
+weird_counts2 <- counts_ov[, colnames(counts_ov) %in% weird_barcodes]
+saveRDS(weird_counts2, "weird_count_matrix.RDS") #2ia wrid nes 1 variable tooooooo much
