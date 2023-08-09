@@ -1,6 +1,8 @@
 ---
 title: "trying models for tcga ov"
-output: pdf_document
+output:
+  html_document:
+    df_print: paged
 date: "2023-08-03"
 ---
 
