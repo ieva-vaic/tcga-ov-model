@@ -1,0 +1,20 @@
+name: TCGA-OV 
+channels:
+  - conda-forge
+  - base
+  - R
+  - bioconda
+dependencies:
+  - r-base=4.3.1
+  - r-tidyverse=2.0.0
+  - bioconductor-TCGAbiolinks=2.28.3
+  - bioconductor-SummarizedExperiment=1.30.2 
+  - r-caret=6.0_94
+  - snakemake
+  - r-argparse=2.2.2
+  - r-glmnet=4.1_7
+  - r-rockchalk=1.8.157
+  - bioconductor-ComplexHeatmap=2.16.0
+  - r-gplots=3.1.3
+
+

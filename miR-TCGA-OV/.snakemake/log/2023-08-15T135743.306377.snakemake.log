@@ -1,0 +1,37 @@
+Building DAG of jobs...
+Using shell: /bin/bash
+Provided cores: 2
+Rules claiming more threads will be scaled down.
+Job stats:
+job                                  count
+---------------------------------  -------
+all                                      1
+symlink4                                 1
+test_train_split_tcga_ov_mir_data        1
+total                                    3
+
+Select jobs to execute...
+
+[Tue Aug 15 13:57:43 2023]
+rule test_train_split_tcga_ov_mir_data:
+    input: TCGA-OV-data/MERGED.RDS
+    output: /home/ieva/rprojects/TCGA-OV-data/y_train.RDS, /home/ieva/rprojects/TCGA-OV-data/y_test.RDS, /home/ieva/rprojects/TCGA-OV-data/weird_cases_mir.RDS
+    jobid: 2
+    reason: Missing output files: /home/ieva/rprojects/TCGA-OV-data/y_train.RDS, /home/ieva/rprojects/TCGA-OV-data/weird_cases_mir.RDS, /home/ieva/rprojects/TCGA-OV-data/y_test.RDS
+    resources: tmpdir=/tmp
+
+Rscript --vanilla /home/ieva/rprojects/tcga-ov-model/miR-TCGA-OV/.snakemake/scripts/tmpp8p22xp7.splits_mirs.R
+[Tue Aug 15 13:57:46 2023]
+Error in rule test_train_split_tcga_ov_mir_data:
+    jobid: 2
+    input: TCGA-OV-data/MERGED.RDS
+    output: /home/ieva/rprojects/TCGA-OV-data/y_train.RDS, /home/ieva/rprojects/TCGA-OV-data/y_test.RDS, /home/ieva/rprojects/TCGA-OV-data/weird_cases_mir.RDS
+
+RuleException:
+CalledProcessError in file /home/ieva/rprojects/tcga-ov-model/miR-TCGA-OV/Snakefile, line 66:
+Command 'set -euo pipefail;  Rscript --vanilla /home/ieva/rprojects/tcga-ov-model/miR-TCGA-OV/.snakemake/scripts/tmpp8p22xp7.splits_mirs.R' returned non-zero exit status 1.
+  File "/home/ieva/rprojects/tcga-ov-model/miR-TCGA-OV/Snakefile", line 66, in __rule_test_train_split_tcga_ov_mir_data
+  File "/home/ieva/mambaforge/envs/TCGA-OV/lib/python3.11/concurrent/futures/thread.py", line 58, in run
+Shutting down, this might take some time.
+Exiting because a job execution failed. Look above for error message
+Complete log: .snakemake/log/2023-08-15T135743.306377.snakemake.log

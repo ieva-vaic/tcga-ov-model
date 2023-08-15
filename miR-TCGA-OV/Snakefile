@@ -1,0 +1,105 @@
+rule all:
+  "Collect all these files"
+  input:
+        'outputs_mir/figures/upset.png',
+        'outputs_mir/figures/venn.png',
+        'outputs_mir/figures/figo_intersect.csv'  
+          
+rule download_coldata:
+  output: 
+        "/home/ieva/rprojects/TCGA-OV-data/tcga_mir_LOGdata.RDS",      
+  script:
+        "scripts_miR/download_miR-RPMs.R"
+
+rule symlink:
+  input:
+        "/home/ieva/rprojects/TCGA-OV-data/tcga_mir_LOGdata.RDS"
+  output:
+        symlink = "TCGA-OV-data/tcga_mir_LOGdata.RDS"
+  shell:
+        """
+        ln -sr {input} {output.symlink}
+        """
+rule download_clindata:
+  output: 
+        "/home/ieva/rprojects/TCGA-OV-data/full_clinical.RDS",      
+  script:
+        "scripts_miR/download_TCGA-OV-clinical.R"
+rule symlink2:
+  input:
+        "/home/ieva/rprojects/TCGA-OV-data/full_clinical.RDS"
+  output:
+        symlink = "TCGA-OV-data/full_clinical.RDS"
+  shell:
+        """
+        ln -sr {input} {output.symlink}
+        """
+
+rule merge_tcga_ov_mir_data:
+  input:
+        "TCGA-OV-data/tcga_mir_LOGdata.RDS",
+        "TCGA-OV-data/full_clinical.RDS"
+  output: 
+        "/home/ieva/rprojects/TCGA-OV-data/MERGED.RDS",      
+  script:
+        "scripts_miR/merge_miR_tcga-ov.R"
+        
+
+rule symlink3:
+  input:
+        "/home/ieva/rprojects/TCGA-OV-data/MERGED.RDS"
+  output:
+        symlink = "TCGA-OV-data/MERGED.RDS"
+  shell:
+        """
+        ln -sr {input} {output.symlink}
+        """
+
+rule test_train_split_tcga_ov_mir_data:
+  input:
+        "TCGA-OV-data/MERGED.RDS"
+  output: 
+        "/home/ieva/rprojects/TCGA-OV-data/y_train.RDS", 
+        "/home/ieva/rprojects/TCGA-OV-data/y_test.RDS", 
+        "/home/ieva/rprojects/TCGA-OV-data/weird_cases_mir.RDS"     
+  script:
+        "scripts_miR/splits_mirs.R"
+
+rule symlink4:
+  input:
+        input1 = "/home/ieva/rprojects/TCGA-OV-data/y_train.RDS", 
+        input2 = "/home/ieva/rprojects/TCGA-OV-data/y_test.RDS", 
+        input3 = "/home/ieva/rprojects/TCGA-OV-data/weird_cases_mir.RDS"
+  output:
+        symlink1 = "TCGA-OV-data/y_train.RDS",
+        symlink2 = "TCGA-OV-data/y_test.RDS",
+        symlink3 = "TCGA-OV-data/weird_cases_mir.RDS"
+
+  shell:
+        """
+        ln -sr {input.input1} {output.symlink1} 
+        ln -sr {input.input2} {output.symlink2} 
+        ln -sr {input.input3} {output.symlink3}
+        """      
+
+rule models_mirs:
+  input:
+        "TCGA-OV-data/y_train.RDS"
+  output: 
+        'outputs_mir/mirs_status.csv', 
+        'outputs_mir/mirs_stage2.csv', 
+        'outputs_mir/mirs_stage3.csv',      
+  script:
+        "scripts_miR/model_build_mirs.R"
+
+rule mir_vens:
+  input:
+        "outputs_mir/mirs_status.csv",
+        "outputs_mir/mirs_stage2.csv",
+        "outputs_mir/mirs_stage3.csv"
+  output: 
+        'outputs_mir/figures/upset.png',
+        'outputs_mir/figures/venn.png',
+        'outputs_mir/figures/figo_intersect.csv'  
+  script:
+        "scripts_miR/venn_of_mirs.R"   

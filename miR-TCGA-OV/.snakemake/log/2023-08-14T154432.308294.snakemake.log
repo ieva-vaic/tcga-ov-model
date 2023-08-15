@@ -1,0 +1,28 @@
+Building DAG of jobs...
+Using shell: /bin/bash
+Provided cores: 1 (use --cores to define parallelism)
+Rules claiming more threads will be scaled down.
+Job stats:
+job                 count
+----------------  -------
+download_coldata        1
+total                   1
+
+Select jobs to execute...
+
+[Mon Aug 14 15:44:32 2023]
+rule download_coldata:
+    input: download_miR-RPMs.R
+    output: tcga_mir_LOGdata.RDS
+    jobid: 0
+    reason: Missing output files: tcga_mir_LOGdata.RDS
+    resources: tmpdir=/tmp
+
+Rscript download_miR-RPMs.R         --output tcga_mir_LOGdata.RDS
+Waiting at most 5 seconds for missing files.
+MissingOutputException in rule download_coldata in file /home/ieva/rprojects/tcga-ov-model/miR-TCGA-OV/Snakefile, line 1:
+Job 0 completed successfully, but some output files are missing. Missing files after 5 seconds. This might be due to filesystem latency. If that is the case, consider to increase the wait time with --latency-wait:
+tcga_mir_LOGdata.RDS
+Shutting down, this might take some time.
+Exiting because a job execution failed. Look above for error message
+Complete log: .snakemake/log/2023-08-14T154432.308294.snakemake.log

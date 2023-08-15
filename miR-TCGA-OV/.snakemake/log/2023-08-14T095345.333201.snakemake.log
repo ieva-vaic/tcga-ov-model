@@ -1,0 +1,54 @@
+Building DAG of jobs...
+Using shell: /bin/bash
+Provided cores: 3
+Rules claiming more threads will be scaled down.
+Job stats:
+job                       count
+----------------------  -------
+download_clindata             1
+download_coldata              1
+merge_tcga_ov_mir_data        1
+total                         3
+
+Select jobs to execute...
+
+[Mon Aug 14 09:53:48 2023]
+rule download_coldata:
+    input: /home/ieva/rprojects/tcga-ov-model/miR-TCGA-OV/download_miR-RPMs.R
+    output: /home/ieva/rprojects/TCGA-OV-data/tcga_mir_LOGdata.RDS
+    jobid: 1
+    reason: Updated input files: /home/ieva/rprojects/tcga-ov-model/miR-TCGA-OV/download_miR-RPMs.R
+    resources: tmpdir=/tmp
+
+Rscript /home/ieva/rprojects/tcga-ov-model/miR-TCGA-OV/download_miR-RPMs.R
+
+[Mon Aug 14 09:53:48 2023]
+rule download_clindata:
+    input: /home/ieva/rprojects/tcga-ov-model/miR-TCGA-OV/download_TCGA-OV-clinical.R
+    output: /home/ieva/rprojects/TCGA-OV-data/full_clinical.RDS
+    jobid: 2
+    reason: Updated input files: /home/ieva/rprojects/tcga-ov-model/miR-TCGA-OV/download_TCGA-OV-clinical.R
+    resources: tmpdir=/tmp
+
+Rscript /home/ieva/rprojects/tcga-ov-model/miR-TCGA-OV/download_TCGA-OV-clinical.R
+[Mon Aug 14 09:54:25 2023]
+Error in rule download_clindata:
+    jobid: 2
+    input: /home/ieva/rprojects/tcga-ov-model/miR-TCGA-OV/download_TCGA-OV-clinical.R
+    output: /home/ieva/rprojects/TCGA-OV-data/full_clinical.RDS
+    shell:
+        Rscript /home/ieva/rprojects/tcga-ov-model/miR-TCGA-OV/download_TCGA-OV-clinical.R
+        (one of the commands exited with non-zero exit code; note that snakemake uses bash strict mode!)
+
+[Mon Aug 14 09:56:09 2023]
+Error in rule download_coldata:
+    jobid: 1
+    input: /home/ieva/rprojects/tcga-ov-model/miR-TCGA-OV/download_miR-RPMs.R
+    output: /home/ieva/rprojects/TCGA-OV-data/tcga_mir_LOGdata.RDS
+    shell:
+        Rscript /home/ieva/rprojects/tcga-ov-model/miR-TCGA-OV/download_miR-RPMs.R
+        (one of the commands exited with non-zero exit code; note that snakemake uses bash strict mode!)
+
+Shutting down, this might take some time.
+Exiting because a job execution failed. Look above for error message
+Complete log: .snakemake/log/2023-08-14T095345.333201.snakemake.log

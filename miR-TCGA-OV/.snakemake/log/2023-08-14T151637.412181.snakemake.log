@@ -1,0 +1,33 @@
+Building DAG of jobs...
+Using shell: /bin/bash
+Provided cores: 1 (use --cores to define parallelism)
+Rules claiming more threads will be scaled down.
+Job stats:
+job                 count
+----------------  -------
+download_coldata        1
+total                   1
+
+Select jobs to execute...
+
+[Mon Aug 14 15:16:38 2023]
+rule download_coldata:
+    input: download_miR-RPMs.R
+    output: TCGA-OV-data/tcga_mir_LOGdata.RDS
+    jobid: 0
+    reason: Missing output files: TCGA-OV-data/tcga_mir_LOGdata.RDS
+    resources: tmpdir=/tmp
+
+Rscript download_miR-RPMs.R         --output TCGA-OV-data/tcga_mir_LOGdata.RDS
+[Mon Aug 14 15:17:49 2023]
+Error in rule download_coldata:
+    jobid: 0
+    input: download_miR-RPMs.R
+    output: TCGA-OV-data/tcga_mir_LOGdata.RDS
+    shell:
+        Rscript download_miR-RPMs.R         --output TCGA-OV-data/tcga_mir_LOGdata.RDS
+        (one of the commands exited with non-zero exit code; note that snakemake uses bash strict mode!)
+
+Shutting down, this might take some time.
+Exiting because a job execution failed. Look above for error message
+Complete log: .snakemake/log/2023-08-14T151637.412181.snakemake.log

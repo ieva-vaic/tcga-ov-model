@@ -1,0 +1,36 @@
+Building DAG of jobs...
+Using shell: /bin/bash
+Provided cores: 1 (use --cores to define parallelism)
+Rules claiming more threads will be scaled down.
+Job stats:
+job                 count
+----------------  -------
+all                     1
+download_coldata        1
+symlink                 1
+total                   3
+
+Select jobs to execute...
+
+[Tue Aug 15 11:11:45 2023]
+rule download_coldata:
+    input: download_miR-RPMs.R
+    output: /home/ieva/rprojects/TCGA-OV-data/tcga_mir_LOGdata.RDS
+    jobid: 2
+    reason: Updated input files: download_miR-RPMs.R
+    resources: tmpdir=/tmp
+
+[Tue Aug 15 11:11:45 2023]
+Error in rule download_coldata:
+    jobid: 2
+    input: download_miR-RPMs.R
+    output: /home/ieva/rprojects/TCGA-OV-data/tcga_mir_LOGdata.RDS
+
+RuleException:
+NameError in file /home/ieva/rprojects/tcga-ov-model/miR-TCGA-OV/Snakefile, line 13:
+The name 'input' is unknown in this context. Please make sure that you defined that variable. Also note that braces not used for variable access have to be escaped by repeating them, i.e. {{print $1}}
+  File "/home/ieva/rprojects/tcga-ov-model/miR-TCGA-OV/Snakefile", line 13, in __rule_download_coldata
+  File "/home/ieva/mambaforge/envs/TCGA-OV/lib/python3.11/concurrent/futures/thread.py", line 58, in run
+Shutting down, this might take some time.
+Exiting because a job execution failed. Look above for error message
+Complete log: .snakemake/log/2023-08-15T111145.175146.snakemake.log

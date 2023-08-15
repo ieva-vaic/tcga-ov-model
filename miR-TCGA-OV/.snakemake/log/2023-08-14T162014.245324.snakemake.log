@@ -1,0 +1,32 @@
+Building DAG of jobs...
+Using shell: /bin/bash
+Provided cores: 2
+Rules claiming more threads will be scaled down.
+Job stats:
+job                 count
+----------------  -------
+download_coldata        1
+total                   1
+
+Select jobs to execute...
+
+[Mon Aug 14 16:20:14 2023]
+rule download_coldata:
+    output: TCGA-OV-data/tcga_mir_LOGdata.RDS
+    jobid: 0
+    reason: Missing output files: TCGA-OV-data/tcga_mir_LOGdata.RDS
+    resources: tmpdir=/tmp
+
+[Mon Aug 14 16:20:14 2023]
+Error in rule download_coldata:
+    jobid: 0
+    output: TCGA-OV-data/tcga_mir_LOGdata.RDS
+
+RuleException:
+NameError in file /home/ieva/rprojects/tcga-ov-model/miR-TCGA-OV/Snakefile, line 5:
+The name 'output' is unknown in this context. Please make sure that you defined that variable. Also note that braces not used for variable access have to be escaped by repeating them, i.e. {{print $1}}
+  File "/home/ieva/rprojects/tcga-ov-model/miR-TCGA-OV/Snakefile", line 5, in __rule_download_coldata
+  File "/home/ieva/mambaforge/envs/TCGA-OV/lib/python3.11/concurrent/futures/thread.py", line 58, in run
+Shutting down, this might take some time.
+Exiting because a job execution failed. Look above for error message
+Complete log: .snakemake/log/2023-08-14T162014.245324.snakemake.log

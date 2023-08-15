@@ -1,0 +1,208 @@
+---
+title: "trying models for tcga ov"
+output:
+  html_document:
+    df_print: paged
+date: "2023-08-03"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "~/tcga-ov-data") #special setwd for rmd files
+```
+
+```{r, include=FALSE}
+library(dplyr)
+library(ggplot2)
+library(glmnet)
+library("EnsDb.Hsapiens.v79")
+library("gplots")
+library("RColorBrewer")
+```
+```{r}
+#join clinical data with count data
+#paleist modeli, outputas bus predictions aba jo matas
+train_clinical <- read.csv("train_data.csv", header = T) 
+train_counts_cleaned <- read.csv("train_count_data_cleaned.csv", header = T, ) 
+#now, because in the saving step I left rownames, but the object once opened is a dataframe I need to:
+#transpose so that the rows match the clinical data
+train_counts_cleaned <- t(train_counts_cleaned)
+# the colnames (trancript names) are saved in X row, so I need to rename
+X <- train_counts_cleaned[1,]
+colnames(train_counts_cleaned) <- X
+train_counts_cleaned <- train_counts_cleaned[-1, ]
+train_counts_cleaned <- as.data.frame(train_counts_cleaned) #I need it because the thing somehow looses its dataframeness
+#I also need rownames to be its own colum for the join
+train_counts_cleaned$barcode <- rownames(train_counts_cleaned)
+#And I want it to be the first colum
+train_counts_cleaned <- train_counts_cleaned %>% relocate(barcode, .before = "ENSG00000000003")
+#last thing the barcodes are not the same . need to change to -
+train_counts_cleaned$barcode <- gsub("\\.", "-", train_counts_cleaned$barcode)
+#now for the join full join
+train_cleaned_joined <- full_join(train_clinical, train_counts_cleaned, by = "barcode") 
+#chek if everthings correct
+dim(train_cleaned_joined)
+```
+# Base
+```{r}
+#glm(outcome ~ x)
+model <- glm(vital_status == "Dead" ~ 1, data= train_cleaned_joined, family = "binomial" ) 
+#vidutine tikimybe, nuo efektines grupes patikirint art tikrai
+summary(model) #intercepta rodo, rodo p ar daugiau uz 0
+#find prediction probabilities
+pred_prob <- predict(model, type = "response")
+# dead/nrow vidutine tikimybe yra 219/347, todel base probability yra 0.6311239
+#converst prediction probs to classes
+pred_classes <- pred_prob > 0.5 #padaro true false, siuo atveju visi true
+table(pred_classes, train_cleaned_joined$vital_status) #paglyginimas su real reiksmem 
+a <- train_cleaned_joined$vital_status == "Dead" #cia reikalinga palyginimui tikru reiksmiu
+v <- pred_classes == a  #cia lyginam predictions su reiksmem
+sum(v) / nrow(train_cleaned_joined) #loss accurary siuo atveju paskaiciuoja same skaiciu 0.6311239
+```
+# Stage
+```{r}
+#2nd model 
+model_clinical <- glm(vital_status == "Dead" ~ figo_stage, data= train_cleaned_joined,
+             na.action = na.exclude, family = "binomial" ) #vidutine tikimybe, nuo efektines grupes bet patikirint ar tikrai
+summary(model_clinical) #intercepta rodo
+pred_prob_clin <- predict(model_clinical, type = "response")
+pred_classes_clin <- pred_prob_clin > 0.5
+table(pred_classes_clin, train_cleaned_joined$vital_status)
+a <- train_cleaned_joined$vital_status == "Dead"
+v <- pred_classes_clin == a  
+sum(v, na.rm = T) / nrow(train_cleaned_joined) #loss accurary for figo not cleaned 0.6455331
+```
+
+# Age
+```{r}
+model_age <- glm(vital_status == "Dead" ~ age_at_diagnosis, data= train_cleaned_joined,
+                      na.action = na.exclude, family = "binomial" ) #vidutine tikimybe, nuo efektines grupes bet patikirint ar tikrai
+summary(model_age) #intercepta rodo
+ggplot(train_cleaned_joined, aes(x=vital_status  , y=age_at_diagnosis/365)) +
+  geom_boxplot() #optional see your stuff mapped
+pred_prob_age <- predict(model_age, type = "response")
+pred_classes_age <- pred_prob_age> 0.5
+v <- pred_classes_age == a 
+sum(v, na.rm = T) / nrow(train_cleaned_joined) #0.6282421
+```
+# race
+```{r}
+model_race <- glm(vital_status == "Dead" ~ race, data= train_cleaned_joined,
+                 na.action = na.exclude, family = "binomial" ) #vidutine tikimybe, nuo efektines grupes bet patikirint ar tikrai
+summary(model_race) #intercepta rodo
+pred_prob_race <- predict(model_race, type = "response")
+pred_classes_race <- pred_prob_race > 0.5
+v <- pred_classes_race == a 
+sum(v, na.rm = T) / nrow(train_cleaned_joined) #0.6570605
+```
+## non glm models
+```{r}
+#I will follow costalab tutorial but skip normalization with limma
+# step 1: set up data
+#I need a count matrix  where persons are in rows and genes in colums
+train_mat <- data.matrix(train_counts_cleaned, rownames.force = NA)
+train_mat <- train_mat[,-1] #nedd this, because I had added barcodes
+#I need response factor
+train_response <- as.factor(train_cleaned_joined$vital_status)
+```
+
+```{r}
+#step 2: elastic net model
+#parameter alpha: Elastic Net will behave more like LASSO (alpha = 1) or like Ridge Regression (alpha = 0)
+# Train model on training dataset using cross-validation
+res = cv.glmnet(
+  x = train_mat,
+  y = train_response,
+  alpha = 0.5,
+  family = "binomial"
+)
+
+plot(res)
+#skip testing model, requires test data
+# Getting genes that contribute for the prediction
+res_coef = coef(res, s="lambda.min") # the "coef" function returns a sparse matrix
+# what if I change lambda method?
+#res_coef = coef(res, s="lambda.1se") # the "coef" function returns a sparse matrix
+dim(res_coef)
+head(res_coef) # in a sparse matrix the "." represents the value of zero
+# get coefficients with non-zero values
+res_coef = res_coef[res_coef[,1] != 0,] 
+# note how performing this operation changed the type of the variable
+head(res_coef)
+# remove first coefficient as this is the intercept, a variable of the model itself
+res_coef = res_coef[-1]
+
+relevant_genes = names(res_coef) # get names of the (non-zero) variables.
+length(relevant_genes) # number of selected genes #64 lambda min, ir #0 genes with 1SE
+head(relevant_genes) # few select genes
+
+#convert relavant gene names
+relevant_gene_names <- ensembldb::select(EnsDb.Hsapiens.v79, keys= relevant_genes, keytype = "GENEID", columns = c("SYMBOL","GENEID"))
+relevant_gene_names
+```
+```{r}
+#heatmap?
+ # define the color palette for the plot
+hmcol = colorRampPalette(rev(brewer.pal(9, "RdBu")))(256)
+# perform complete linkage clustering
+clust = function(x) hclust(x, method="complete")
+# use the inverse of correlation as distance.
+dist = function(x) as.dist((1-cor(t(x)))/2)
+# As you've seen a good looking heatmap involves a lot of parameters: does not work
+gene_heatmap = heatmap.2(
+  t(train_mat[,relevant_genes]),
+  scale="row",          # scale the values for each gene (row)
+  density.info="none",  # turns off density plot inside color legend
+  trace="none",         # turns off trace lines inside the heat map
+  col=hmcol,            # define the color map
+  labCol=FALSE,         # Not showing column labels
+  ColSideColors=as.character(as.numeric(train_response)), # Show colors for each response class
+  dendrogram="both",    # Show dendrograms for both axis
+  hclust = clust,       # Define hierarchical clustering method
+  distfun = dist,       # Using correlation coefficient for distance function
+  cexRow=.6,            # Resize row labels
+  margins=c(2,6)        # Define margin spaces
+) #red vs black is vital status
+```
+
+```{r}
+#kitas normalizacija nenufiltruota limavoom
+limavoommmm_tcga_train <- readRDS("limawoom_tcgaov.RDS")
+limavoommmm_tcga_train <- t(limavoommmm_tcga_train)
+#I need response factor
+train_response <- as.factor(train_cleaned_joined$vital_status)
+res2 = cv.glmnet(
+  x = limavoommmm_tcga_train,
+  y = train_response,
+  alpha = 0.5,
+  family = "binomial"
+)
+
+plot(res2)
+#skip testing model, requires test data
+# Getting genes that contribute for the prediction
+res_coef2 = coef(res2, s="lambda.min") # the "coef" function returns a sparse matrix
+# what if I change lambda method?
+#res_coef = coef(res, s="lambda.1se") # the "coef" function returns a sparse matrix
+dim(res_coef2)
+head(res_coef2) # in a sparse matrix the "." represents the value of zero
+# get coefficients with non-zero values
+res_coef2 = res_coef2[res_coef2[,1] != 0,] 
+# note how performing this operation changed the type of the variable
+head(res_coef2)
+# remove first coefficient as this is the intercept, a variable of the model itself
+res_coef2 = res_coef2[-1]
+
+relevant_genes2 = names(res_coef2) # get names of the (non-zero) variables.
+length(relevant_genes2) # number of selected genes #26 lambda min, ir #0 genes with 1SE
+head(relevant_genes2) # few select genes
+
+#convert relavant gene names
+relevant_genes2 <- gsub("\\..*", "", relevant_genes2)
+relevant_gene_names2 <- ensembldb::select(EnsDb.Hsapiens.v79, keys= relevant_genes2, keytype = "GENEID", columns = c("SYMBOL","GENEID"))
+relevant_gene_names2
+
+intersect(relevant_genes,relevant_genes2) #none of the genes are the same between normalization methods
+```
+
+

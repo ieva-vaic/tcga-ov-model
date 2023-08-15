@@ -1,0 +1,34 @@
+Building DAG of jobs...
+Using shell: /bin/bash
+Provided cores: 1 (use --cores to define parallelism)
+Rules claiming more threads will be scaled down.
+Job stats:
+job                 count
+----------------  -------
+all                     1
+download_coldata        1
+symlink                 1
+total                   3
+
+Select jobs to execute...
+
+[Tue Aug 15 11:12:33 2023]
+rule download_coldata:
+    output: /home/ieva/rprojects/TCGA-OV-data/tcga_mir_LOGdata.RDS
+    jobid: 2
+    reason: Missing output files: /home/ieva/rprojects/TCGA-OV-data/tcga_mir_LOGdata.RDS
+    resources: tmpdir=/tmp
+
+[Tue Aug 15 11:13:51 2023]
+Error in rule download_coldata:
+    jobid: 2
+    output: /home/ieva/rprojects/TCGA-OV-data/tcga_mir_LOGdata.RDS
+
+RuleException:
+CalledProcessError in file /home/ieva/rprojects/tcga-ov-model/miR-TCGA-OV/Snakefile, line 11:
+Command 'set -euo pipefail;  Rscript --vanilla /home/ieva/rprojects/tcga-ov-model/miR-TCGA-OV/.snakemake/scripts/tmpuerpzwfa.download_miR-RPMs.R' returned non-zero exit status 1.
+  File "/home/ieva/rprojects/tcga-ov-model/miR-TCGA-OV/Snakefile", line 11, in __rule_download_coldata
+  File "/home/ieva/mambaforge/envs/TCGA-OV/lib/python3.11/concurrent/futures/thread.py", line 58, in run
+Shutting down, this might take some time.
+Exiting because a job execution failed. Look above for error message
+Complete log: .snakemake/log/2023-08-15T111232.598971.snakemake.log
