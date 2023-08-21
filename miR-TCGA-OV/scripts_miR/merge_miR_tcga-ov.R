@@ -1,23 +1,13 @@
 #this is a STEP1.2: a script for downloading TCGA-OV clinical data
 #setwd("/home/ieva/rprojects/TCGA-OV-data/") #home wsl - data folder 
 #load libraries
-#library(argparse)
 library(tidyverse)
-# parse data
-#parser <- ArgumentParser(description= 'This progrom merges tcga files')
-#parser$add_argument('--input1', '-i1', help= 'Input file')
-#parser$add_argument('--input2', '-i2', help= 'Input file')
-#parser$add_argument('--output', '-o', help= 'Output file')
-#xargs<- parser$parse_args()
-#tcga_mir_LOGdata <- readRDS(xargs$input1)
-#full_clinical <- readRDS(xargs$input2)
+
 tcga_mir_LOGdata <- readRDS(snakemake@input[[1]])
 full_clinical <- readRDS(snakemake@input[[2]])
 
 #tcga_mir_LOGdata = readRDS(file = "tcga_mir_LOGdata.RDS") 
 #full_clinical <- readRDS(file = "full_clinical.RDS")
-#tcga_mir_LOGdata <- readRDS(snakemake@input[['coldata']])
-#full_clinical <- readRDS(snakemake@input[['clindata']])
 #i will first transpose the count data 
 tcga_mir_LOGdata_t <- as.data.frame(t(tcga_mir_LOGdata))
 dim(tcga_mir_LOGdata_t) #499 cases ir 1881 mirs

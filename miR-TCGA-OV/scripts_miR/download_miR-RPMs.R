@@ -5,11 +5,6 @@ setwd("/home/ieva/rprojects/TCGA-OV-data/") #home wsl - data folder
 library("tidyverse")
 library("SummarizedExperiment")
 library("TCGAbiolinks")
-library(argparse)
-# parse data
-parser <- ArgumentParser(description= 'this program downloads miR data')
-parser$add_argument('--output', '-o', help= 'Output file')
-xargs<- parser$parse_args()
 #make TCGA query
 query_TCGA_mi = GDCquery(
   project = "TCGA-OV",
@@ -25,11 +20,25 @@ tcga_mir_data <- GDCprepare(query_TCGA_mi)
 #chek how much data was preped
 dim(tcga_mir_data) #way too many colums per sample
 rownames(tcga_mir_data) <- tcga_mir_data$miRNA_ID #this is needed to keep mir names
-# I'll be using RMS's data, then log-transform 
+#count data 
+read_real_countData <-  colnames(tcga_mir_data)[grep("read_count", colnames(tcga_mir_data))]
+tcga_mir_countdata<- tcga_mir_data[,read_real_countData]
+colnames(tcga_mir_countdata) <- gsub("read_count_","", colnames(tcga_mir_countdata)) 
+dim(tcga_mir_countdata) #now only 499
+tcga_mir_countdata <- as.matrix(tcga_mir_countdata)
+str(tcga_mir_countdata)
+saveRDS(object = tcga_mir_countdata,
+        snakemake@output[[1]],
+        compress = FALSE)
+########################################        
+# I'll be using RPMS's data, then log-transform 
 read_countData <-  colnames(tcga_mir_data)[grep("reads", colnames(tcga_mir_data))]
 tcga_mir_data <- tcga_mir_data[,read_countData]
 colnames(tcga_mir_data) <- gsub("reads_per_million_miRNA_mapped_","", colnames(tcga_mir_data)) 
 dim(tcga_mir_data) #now only 499
+saveRDS(object = tcga_mir_data,
+        snakemake@output[[2]],
+        compress = FALSE)
 ##################################################################################
 #This is step 1b. LOG-trasnform/Normalize RPMs, resulting i a smaller countmatrix
 #filter low expressed mirs
@@ -44,6 +53,6 @@ tcga_mir_data.keep <- as.matrix(tcga_mir_data.keep)
 logcounts <- as.matrix(log2(tcga_mir_data.keep+0.5))
 #save!
 saveRDS(object = logcounts,
-        snakemake@output[[1]],
+        snakemake@output[[3]],
         compress = FALSE)
    
