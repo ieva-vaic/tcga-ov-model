@@ -14,10 +14,15 @@ library(DESeq2)
 library(biomaRt)
 library(org.Hs.eg.db)
 library(clusterProfiler)
+library(WGCNA)
+library(gridExtra)
+library(CorLevelPlot)
+library(venn)
 ```
 
 # Open downloaded TCGA mRNA data and downloaded and saved GTEX data
-## inspect gtex, make a dataframe
+## inspect gtex, 
+
 ```{r}
 gtex_counts <- readRDS("C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/GTEX/gtex_counts.RDS")
 
@@ -56,7 +61,7 @@ filtered_mRNA <- filter(mRNA_counts, rownames(mRNA_counts) %in% gtex_names) #lik
 dim(filtered_mRNA)
 ```
 
-# apjungimas TCGA ir GTEX
+# Apjungimas TCGA ir GTEX
 ## 1. step 1: pheno sutvarkyt kad maziau butu (from step 2 script)
 ```{r}
 non_informative <- c("tumor_descriptor", "state", "is_ffpe", "tissue_type",
@@ -94,7 +99,7 @@ rm(non_informative)
 saveRDS(pheno_final, "C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-OV-mRNA data/mRNA and clinical data TCGA-OV/pheno_no_empty_data.RDS")
 ```
 
-# 2. step 2: sujungt pheno su nufiltruotu TCGA_mRNA
+## 2. step 2: sujungt pheno su nufiltruotu TCGA_mRNA
 ```{r}
 pheno_final <- readRDS("C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-OV-mRNA data/mRNA and clinical data TCGA-OV/pheno_no_empty_data.RDS")
 filtered_mRNA_t <- as.data.frame(t(filtered_mRNA))
@@ -106,7 +111,7 @@ rownames(mRNA_full) <- mRNA_full$barcode
 
 saveRDS(mRNA_full, "C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-OV-mRNA data/mRNA and clinical data TCGA-OV/pheno_mRNA_joined.RDS")
 ```
-# split off weird
+## X. split off weird
 dabar reik splitinti nes po to trukdys prijungti gtex
 ```{r}
 #split weird cases from the rest of the data by definition and treatments
@@ -124,7 +129,7 @@ dim(mRNA_full) #421 lieka iš 429, so cheks out
 ```
 
 
-# 3. step 3. sujungt 
+## 3. step 3. sujungt 
 sumazinam gtex faila kad sutaptu stulpeliai
 ```{r}
 #tik counts sujungt
@@ -135,7 +140,7 @@ filtered_gtex <- filter(gtex_df, rownames(gtex_df) %in% mRNA_filtered_names) #li
 dim(filtered_gtex) #35117   180
 ```
 
-# 4. step 4. prijungt naujus GTEX
+## 4. step 4. prijungt naujus GTEX
 ```{r}
 #transpose GTEX
 gtex_t <- as.data.frame(t(filtered_gtex)) # 180 zmoniu 56200genu transcriptu
@@ -155,7 +160,7 @@ gtcga <- bind_rows(mRNA_full, gtex_t)
 dim(gtcga) #601(421 + 180) 35165(sutampa su mRNA_full+ gtex stulpelis)
 saveRDS(gtcga, "C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-OV-mRNA data/mRNA and clinical data TCGA-OV/joined_gtex_tcga.RDS")
 ```
-## TRAIN/TEST/ split
+# TRAIN/TEST/ split
 ```{r}
 gtcga <- readRDS("C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-OV-mRNA data/mRNA and clinical data TCGA-OV/joined_gtex_tcga.RDS")
 
@@ -178,7 +183,7 @@ saveRDS(full_train, "C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-
 saveRDS(full_test, "C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-OV-mRNA data/mRNA and clinical data TCGA-OV/test_gtcga.RDS")
 ```
 
-# count data and normalize
+# Count data and normalize
 pirmiausia reikia count matricos su rows as genes
 ```{r}
 full_train <- readRDS("C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-OV-mRNA data/mRNA and clinical data TCGA-OV/train_gtcga.RDS")
@@ -189,13 +194,73 @@ counts_gtcga <- counts_gtcga[, -35118]
 #transpose!
 counts_gtcga <- t(counts_gtcga) #large numeric matrix with rows as genes
 ```
-coldata, rows as samples
+coldata/phenodata, rows as samples
 ```{r}
-which( colnames(full_train)=="gtex" ) #35118 stulpelis
+which(colnames(full_train)=="gtex" ) #35118 stulpelis
 coldata_gtcga <- full_train[, c(1:47, 35165)]
 colnames(coldata_gtcga) #48
 ```
-Normalization DESEQ
+## Outlier check
+```{r}
+# detect outlier genes
+#finds outliers rows samples, colums genes, t for transposing
+gsg <- goodSamplesGenes(counts_gtcga) #no transpose
+summary(gsg) #weather there are outliers
+gsg$allOK #fals tells there are outliers
+
+table(gsg$goodGenes) #false is the number of outliers
+table(gsg$goodSamples)
+#no outliers
+```
+```{r}
+# detect outlier samples - hierarchical clustering - method 1
+#htree negaliu nes per didelio vektoriaus reik
+htree <- hclust(dist(t(counts_gtcga)), method = "average")
+
+plot(htree) #dstant samples should be excluded #save portrait 20x66 inch pdf
+```
+```{r}
+# pca - method 2
+pca <- prcomp(t(counts_gtcga))
+pca.dat <- pca$x #x is information about principal components
+
+pca.var <- pca$sdev^2 #variance explained by principal  components
+pca.var.percent <- round(pca.var/sum(pca.var)*100, digits = 2) 
+#percentage of the variance explained
+
+pca.dat <- as.data.frame(pca.dat)
+
+pca_plot <- ggplot(pca.dat, aes(PC1, PC2)) +
+  geom_point() +
+  geom_text(label = rownames(pca.dat)) + # Here I'd recommend just annotating the points that you consider are outliers. PC1 above 1e6 
+  labs(x = paste0('PC1: ', pca.var.percent[1], ' %'),
+       y = paste0('PC2: ', pca.var.percent[2], ' %'))
+#keli nutole bet not that bad
+```
+## Outlier detetion
+```{r}
+### NOTE: If there are batch effects observed, correct for them before moving ahead
+
+# exclude outlier samples
+samples.to.be.excluded <- c('TCGA-61-2094-01A-01R-1568-13', 
+                          "TCGA-13-0760-01A-01R-1564-13", 
+                          "TCGA-24-1428-01A-01R-1564-13",
+                          "TCGA-24-1845-01A-01R-1567-13",
+                          "TCGA-13-1482-01A-01R-1565-13",
+                          "GTEX-WXYG-1426-SM-4ONCK")
+counts_gtcga <- counts_gtcga[,!(colnames(counts_gtcga) %in% samples.to.be.excluded)] #lieka 488 zmones bendrai
+
+# exclude outlier samples
+coldata_gtcga <- coldata_gtcga %>% 
+  filter(!row.names(.) %in% samples.to.be.excluded) #lieka 488 zmones
+
+all(rownames(coldata_gtcga) %in% colnames(counts_gtcga))
+nrow(coldata_gtcga) == ncol(counts_gtcga)
+all(rownames(coldata_gtcga) == colnames(counts_gtcga)) #reikia reagangint
+```
+
+
+## Normalization DESEQ
 ```{r}
 #first make sure the requiriments
 all(rownames(coldata_gtcga) %in% colnames(counts_gtcga))
@@ -317,7 +382,202 @@ PTMAP4: pseudogene that encodes a prothymosin alpha pseudogene 4.
 ir 2 so novel, that there is no name
 
 # Clustering?
+## 1. Network Construction
 ```{r}
+# Choose a set of soft-thresholding powers
+power <- c(c(1:10), seq(from = 12, to = 50, by = 2))
+
+# Call the network topology analysis function
+#stf runs quite slow!
+sft <- pickSoftThreshold(norm.counts,
+                         powerVector = power,
+                         networkType = "signed",
+                         verbose = 5)
 #be avare to delete everything!!!!! clustering takes so much time
 ```
+```{r}
+sft.data <- sft$fitIndices
+
+# visualization to pick power
+
+a1 <- ggplot(sft.data, aes(Power, SFT.R.sq, label = Power)) +
+  geom_point() +
+  geom_text(nudge_y = 0.1) +
+  geom_hline(yintercept = 0.8, color = 'red') +
+  labs(x = 'Power', y = 'Scale free topology model fit, signed R^2') +
+  theme_classic()
+
+
+a2 <- ggplot(sft.data, aes(Power, mean.k., label = Power)) +
+  geom_point() +
+  geom_text(nudge_y = 0.1) +
+  labs(x = 'Power', y = 'Mean Connectivity') +
+  theme_classic()
+
+grid.arrange(a1, a2, nrow = 2) #library gridExtra
+#choose above red line (above 0.8) and low conectivity (low point on the 2nd plot)
+```
+iš paveikslo rinksiuoosi power of 12
+```{r, eval = FALSE}
+#do not run again! bwnet construction can take hours and needs all the memory
+
+# convert matrix to numeric
+norm.counts[] <- sapply(norm.counts, as.numeric) #reik šitu dalyku po to esančiai eilutei 
+
+soft_power <- 12
+temp_cor <- cor #cor function pasirinkti kitaip namespace error bus
+cor <- WGCNA::cor #naudosim sita
+
+
+# memory estimate w.r.t blocksize
+bwnet <- blockwiseModules(norm.counts,
+                          maxBlockSize = 18000, #for fast clustering: how many genes in a block, visi genai viename bloke
+                          TOMType = "signed",
+                          power = soft_power,
+                          mergeCutHeight = 0.25,
+                          numericLabels = FALSE,
+                          randomSeed = 1234,
+                          verbose = 3)
+
+saveRDS(bwnet, "C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-OV-mRNA data/mRNA and clinical data TCGA-OV/bwnet.RDS") 
+#a save is necessary because bwnet can run for hours and then quit because of memory issues
+cor <- temp_cor #sugražinam
+```
+## 2. Clustering 
+```{r}
+bwnet <- readRDS("C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-OV-mRNA data/mRNA and clinical data TCGA-OV/bwnet.RDS")
+# 5. Module Eigengenes ---------------------------------------------------------
+module_eigengenes <- bwnet$MEs #MEs yra module egenges
+
+
+# Print out a preview
+head(module_eigengenes) #clusters are colors
+
+
+# get number of genes for each module
+table(bwnet$colors) #net 5 spalvos
+```
+```{r}
+# Plot the dendrogram and the module colors before and after merging underneath
+plotDendroAndColors(bwnet$dendrograms[[1]], cbind(bwnet$unmergedColors, bwnet$colors),
+                    c("unmerged", "merged"),
+                    dendroLabels = FALSE,
+                    addGuide = TRUE,
+                    hang= 0.03,
+                    guideHang = 0.05)
+```
+## 3. After unsupervised clustering: Relate modules to traits 
+pasirinkame traits! šiuo atveju dead/alive ir figo stage
+```{r}
+# create traits file - binarize categorical variables
+traits <- coldata_gtcga %>% 
+  mutate(gtex = ifelse(grepl('ovarian cancer', gtex), 1, 0)) %>% 
+  dplyr::select(48) #select the new colum
+```
+
+```{r}
+# Define numbers of genes and samples
+nSamples <- nrow(norm.counts)
+nGenes <- ncol(norm.counts)
+#find corelation between eigengenes
+module.trait.corr <- cor(module_eigengenes, traits, use = 'p') #pearson cor between eigengenes and traits
+module.trait.corr.pvals <- corPvalueStudent(module.trait.corr, nSamples) #cor p values
+```
+a heatmap between eigengenes and chosen traits
+```{r, out.height="50000%"}
+heatmap.data <- merge(module_eigengenes, traits, by = 'row.names') #combine  to data frame
+
+colnames(heatmap.data)
+
+heatmap.data <- heatmap.data %>% 
+  column_to_rownames(var = 'Row.names') #first colum negali buti numeric todel convertuojam i rownames
+
+
+CorLevelPlot(heatmap.data,
+             x = names(heatmap.data)[5], #CLINICAL
+             y = names(heatmap.data)[1:4], #"COLORS"
+             col = c("blue1", "skyblue", "white", "pink", "red"))
+
+#significance denoted by *
+#okay pradžiai meTurqoise idomu nes biggest
+```
+for the most significant modules extract genes, all are significant thus I choose the highest expression
+```{r}
+module.gene.mapping <- as.data.frame(bwnet$colors) #modules stored as colors
+
+mgmGTEX <- module.gene.mapping %>% 
+  filter(`bwnet$colors` == "turquoise") %>% 
+  rownames() #filtruosim genus kurie yra musu norimos "spalvos" 
+
+```
+## 4. Intramodular analysis: Identifying driver genes
+
+Calculate the module membership and the associated p-values
+The module membership/intramodular connectivity is calculated as the correlation of the eigengene and the gene expression profile. This quantifies the similarity of all genes on the array to every module.
+```{r}
+#Identifying driver genes
+module.membership.measure <- cor(module_eigengenes, norm.counts, use = 'p')
+module.membership.measure.pvals <- corPvalueStudent(module.membership.measure, nSamples)
+```
+Calculate the gene association significance with traits and associated p-values
+```{r}
+gene.signf.corr.gtex <- cor(norm.counts, traits$gtex, use = 'p')
+gene.signf.corr.pvals.gtex <- corPvalueStudent(gene.signf.corr.gtex, nSamples)
+ensembl.ids.gtex <- gene.signf.corr.pvals.gtex %>% 
+  as.data.frame() %>% 
+  arrange(V1) %>% 
+  head(25) %>% #how many genes to take? in this case top 25, as the whole color has   1464 genes in it
+  rownames()
+ensembl.ids.gtex #top 25 
+```
+## 5. Retreve gene names for selected genes
+```{r}
+#convert relavant gene names
+wgcna_gtex_names <- gsub("\\..*", "",ensembl.ids.gtex)
+wgcna_gtex_names
+#biomart
+wgcna_gtcga_genes <- getBM(attributes = c('ensembl_gene_id','external_gene_name'), #values to retreve
+      filters = "ensembl_gene_id", #input on quary
+      values = wgcna_gtex_names,
+      mart = ensembl.con) #sukurtas conection object
+wgcna_gtcga_genes
+```
+## 6. Wgcna GO
+```{r}
+#from org.Hs.eg.db
+wgcna_gtcga_genes1 <- wgcna_gtcga_genes[-c(14, 15, 23, 24, 25),] #delete null
+wgtex.symbols <- wgcna_gtcga_genes1$external_gene_name
+wgtex <- mapIds(org.Hs.eg.db, wgtex.symbols, 'ENTREZID', 'SYMBOL')
+#names chr vector of entrez ids
+
+ggo.wgtex <- groupGO(gene = wgtex,
+               OrgDb    = org.Hs.eg.db,
+               ont      = "CC",
+               level    = 3,
+               readable = TRUE)
+
+head(ggo.wgtex) # count is 0 because i provided no counts!
+ggo.wgtex_df <- as.data.frame(ggo.wgtex)
+ggo.wgtex_df_filtered <- ggo.wgtex_df %>% filter(Count != "0")
+ggo.wgtex_df_filtered
+```
+```{r}
+#ego = enrichment go
+ego.wgtex <- enrichGO(gene          = wgtex,
+                OrgDb         = org.Hs.eg.db,
+                ont           = "CC",
+                pAdjustMethod = "BH",
+                pvalueCutoff  = 0.01,
+                qvalueCutoff  = 0.05,
+        readable      = TRUE)
+as.data.frame(ego.wgtex)
+goplot(ego.wgtex)
+```
+
+## 7. Compare WGCNA top 25 with Lasso
+```{r}
+gtex_list <- list(wgcna = wgtex.symbols  , lasso = gtcga_genes.symbols)
+venn(gtex_list) #all six named ones are in the top 25
+```
+
 

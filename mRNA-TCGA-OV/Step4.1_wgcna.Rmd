@@ -3,10 +3,11 @@ title: "WGCNA mRNA TCGA-OV"
 author: "Ieva"
 date: "2023-08-16"
 output:
-  html_document: default
-  pdf_document: default
+  html_document: 
+    toc: true
+    theme: united
 ---
-
+    
 ```{r setup, include=FALSE}
 #namu windows
 knitr::opts_chunk$set(cache = TRUE)
@@ -24,12 +25,11 @@ library(glmnet)
 allowWGCNAThreads() 
 ```
 ```{r}
-setwd("C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data")
 #I need as the assay gives: genes in rows
 #using only traincounts
-data <- readRDS("C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/train_count_matrix.RDS")
+data <- readRDS("C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/nesutvarkyti failai TCGA-OV analysis/RDS files/train_count_matrix.RDS")
 str(data)
-pheno <- read.csv("C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/train_data.csv", header = T)
+pheno <- read.csv("C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/nesutvarkyti failai TCGA-OV analysis/CSV files/train_data.csv", header = T)
 rownames(pheno) <- pheno$barcode
 ```
 ## 1. TCGA-OV mRNA RNAseq counts data taken from earlier analysis
