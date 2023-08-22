@@ -1,0 +1,323 @@
+---
+title: "Step0.1_combine_gtex_and_TCGA"
+author: "Ieva"
+date: "2023-08-21"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(glmnet)
+library("TCGAbiolinks")
+library(DESeq2)
+library(biomaRt)
+library(org.Hs.eg.db)
+library(clusterProfiler)
+```
+
+# Open downloaded TCGA mRNA data and downloaded and saved GTEX data
+## inspect gtex, make a dataframe
+```{r}
+gtex_counts <- readRDS("C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/GTEX/gtex_counts.RDS")
+
+#the gtex is now a matrix that looks like this:
+#rows: ENSEMBLIDS (transcipt level), all 56200 of them 
+head(colnames(gtex_counts))
+#name: ENSEMBL IDS
+#Description: real names 
+#gtex_counts[3:181] #is case names 
+
+#make a numeric dataframe from gtex
+gtex_df <- as.data.frame(gtex_counts)
+rownames(gtex_df) <- gtex_df$Name
+gtex_df <- gtex_df[, -c(1,2)]
+gtex_df[,1:180] <- lapply(gtex_df[,1:180], as.numeric)
+head(str(gtex_df)) #56200 genu
+```
+
+## open TCGA
+```{r}
+#read in tcga counts for mRNA
+tcga_data <- readRDS("C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-OV-mRNA data/mRNA and clinical data TCGA-OV/tcga_data.RDS")
+pheno <- readRDS("C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-OV-mRNA data/mRNA and clinical data TCGA-OV/pheno.RDS")
+
+##assay data converted to dataframe
+mRNA_counts <- assay(tcga_data)
+mRNA_counts <- as.data.frame(mRNA_counts) #60660 transcripts (rows), 429 zmones (cols) 
+mRNA_counts[,1:429] <- lapply(mRNA_counts[,1:429], as.numeric)
+str(mRNA_counts) #60660 genu
+```
+## match tcga counts and gtex counts
+```{r}
+#filter rows to match the tcga transcript ids
+gtex_names <- rownames(gtex_df)
+filtered_mRNA <- filter(mRNA_counts, rownames(mRNA_counts) %in% gtex_names) #liko 35117 genai
+dim(filtered_mRNA)
+```
+
+# apjungimas TCGA ir GTEX
+## 1. step 1: pheno sutvarkyt kad maziau butu (from step 2 script)
+```{r}
+non_informative <- c("tumor_descriptor", "state", "is_ffpe", "tissue_type",
+                     "days_to_diagnosis", "last_known_disease_status", "tissue_or_organ_of_origin", "prior_malignancy", 
+                     "classification_of_tumor", "tumor_grade", "progression_or_recurrence", "alcohol_history", "gender",
+                     "ethnicity", "disease_type", "primary_site", "project_id", "name", "releasable",
+                     "released", "days_to_sample_procurement", "treatments", "sample_type_id", "composition")
+new_pheno <- pheno[ ,!names(pheno) %in% non_informative] #new pheno data with no annoying colums
+treatments_dataframe <- bind_rows(pheno$treatment, .id = "id") #reikia kad treatmentu dataframe butu vardai kurie po to sutaps su pheno
+treatments_dataframe$patient_names<- treatments_dataframe$submitter_id  
+treatments_dataframe$patient_names <-gsub("_treatment.*", "", treatments_dataframe$patient_names)
+drop_from_treamtment <- c("days_to_treatment_end", "days_to_treatment_start", "treatment_id",
+                          "regimen_or_line_of_therapy", "treatment_effect", "therapeutic_agents", "initial_disease_status", 
+                          "treatment_intent_type", "treatment_anatomic_site", "treatment_outcome", "state")
+drop_from_treamtment %in% colnames(treatments_dataframe) 
+treatments_dataframe <- treatments_dataframe[ ,!names(treatments_dataframe) %in% drop_from_treamtment]
+#every person has 2 rows for treatments except for those who had no tretment
+#here I drop the rows where the reatment was not given (indicated by no/na in treatment_or_therapy)
+table(treatments_dataframe$treatment_or_therapy, useNA='a') #429 yes kiti no ar na, todel bandau nufiltruot tik yes
+had_treatment <- subset(treatments_dataframe, treatment_or_therapy == 'yes') #new treatments dataframe
+table(had_treatment$patient_names, useNA='a') #this showes that some are double
+had_treatment$patient <- had_treatment$patient_names #add patient names for easy merging
+#paste treatment types to have 1 row per person
+had_treatment <- had_treatment %>% group_by(patient_names) %>% mutate(undergone_treatments=paste(sort(treatment_type), collapse="_"))   #galutinej eilutej treatment eiga
+had_treatment_collaped <- had_treatment[!duplicated(had_treatment$patient_names), ] # remove duplications, resulting smaller dataframe
+#merge treatments and normal pheno data frame (final pheno dataframe)
+pheno_final <- merge(x = new_pheno, y = had_treatment_collaped, by = "patient", all = TRUE) #429 pac ir 47 clinikiniai
+rm(new_pheno)
+rm(treatments_dataframe) 
+rm(had_treatment)
+rm(had_treatment_collaped)
+rm(drop_from_treamtment)
+rm(non_informative)
+
+saveRDS(pheno_final, "C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-OV-mRNA data/mRNA and clinical data TCGA-OV/pheno_no_empty_data.RDS")
+```
+
+# 2. step 2: sujungt pheno su nufiltruotu TCGA_mRNA
+```{r}
+pheno_final <- readRDS("C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-OV-mRNA data/mRNA and clinical data TCGA-OV/pheno_no_empty_data.RDS")
+filtered_mRNA_t <- as.data.frame(t(filtered_mRNA))
+filtered_mRNA_t$barcode <- rownames(filtered_mRNA_t)
+tail(colnames(filtered_mRNA_t))
+mRNA_full <- left_join(pheno_final, filtered_mRNA_t, by = "barcode")
+dim(mRNA_full) #429 zmones ir 35164 (35118 genai + 47 clinical)
+rownames(mRNA_full) <- mRNA_full$barcode
+
+saveRDS(mRNA_full, "C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-OV-mRNA data/mRNA and clinical data TCGA-OV/pheno_mRNA_joined.RDS")
+```
+# split off weird
+dabar reik splitinti nes po to trukdys prijungti gtex
+```{r}
+#split weird cases from the rest of the data by definition and treatments
+mRNA_full1 <- readRDS("C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-OV-mRNA data/mRNA and clinical data TCGA-OV/pheno_mRNA_joined.RDS")
+split_by_definition <- split(mRNA_full1, f = mRNA_full1$definition, drop = T)
+weird_cases <- split_by_definition$`Recurrent Solid Tumor` # weird group 7 people
+mRNA_full <- split_by_definition$`Primary solid Tumor` #new new phenodata
+
+split_prior_treatment <- split(mRNA_full, f = mRNA_full$prior_treatment, drop = T)
+mRNA_full <- split_prior_treatment$No
+weird_cases <- rbind(weird_cases, split_prior_treatment$Yes) 
+
+dim(weird_cases) # 8 zmones nusišalina
+dim(mRNA_full) #421 lieka iš 429, so cheks out
+```
+
+
+# 3. step 3. sujungt 
+sumazinam gtex faila kad sutaptu stulpeliai
+```{r}
+#tik counts sujungt
+dim(filtered_mRNA) #primenu kad liko 35117 genai
+
+mRNA_filtered_names <- rownames(filtered_mRNA)
+filtered_gtex <- filter(gtex_df, rownames(gtex_df) %in% mRNA_filtered_names) #liko 35117 genai
+dim(filtered_gtex) #35117   180
+```
+
+# 4. step 4. prijungt naujus GTEX
+```{r}
+#transpose GTEX
+gtex_t <- as.data.frame(t(filtered_gtex)) # 180 zmoniu 56200genu transcriptu
+dim(mRNA_full) #421 (nes ner weirds) 35164 mrnr counts + pheno 47
+dim(gtex_t) #180 35117 #gtex
+dim(filtered_mRNA_t) #mRNA counts +"barcode"  su dar likusiais wierd
+```
+dabar sukursim "gtex" stulpeli
+```{r}
+mRNA_full$gtex <- "ovarian cancer"
+gtex_t$gtex <- "control"
+```
+
+```{r}
+#dabar reikia prie kiekvieno geno stulpelio prideti naujas eilutes, zmones :rbind
+gtcga <- bind_rows(mRNA_full, gtex_t)
+dim(gtcga) #601(421 + 180) 35165(sutampa su mRNA_full+ gtex stulpelis)
+saveRDS(gtcga, "C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-OV-mRNA data/mRNA and clinical data TCGA-OV/joined_gtex_tcga.RDS")
+```
+## TRAIN/TEST/ split
+```{r}
+gtcga <- readRDS("C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-OV-mRNA data/mRNA and clinical data TCGA-OV/joined_gtex_tcga.RDS")
+
+# Set (random-number-generator) seed so that results are consistent between runs
+set.seed(18) #choose favorite number
+train_ids <- rbinom(nrow(gtcga), size = 1, prob = 0.8) ==1 #choose persentage
+#we split clinical data first (probably should be indicated by y instead of x)
+full_train = gtcga[train_ids, ] #new train data 494 35165
+full_test  = gtcga[!train_ids, ] #new test data 107 35165
+
+#pasitikrinu kiek kokokiu zmoniu atskyre
+table(full_train$gtex)  
+```
+145 control vs 349 ovarian train sete
+35 control vs 72 ovarian test sete
+
+```{r}
+#save!
+saveRDS(full_train, "C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-OV-mRNA data/mRNA and clinical data TCGA-OV/train_gtcga.RDS")
+saveRDS(full_test, "C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-OV-mRNA data/mRNA and clinical data TCGA-OV/test_gtcga.RDS")
+```
+
+# count data and normalize
+pirmiausia reikia count matricos su rows as genes
+```{r}
+full_train <- readRDS("C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-OV-mRNA data/mRNA and clinical data TCGA-OV/train_gtcga.RDS")
+# regain count data: genes in rows
+counts_gtcga <- full_train[, 48:35165] #nusimažinu tik countus, bet dar liko gtex
+which( colnames(counts_gtcga)=="gtex" ) #35118 stulpelis
+counts_gtcga <- counts_gtcga[, -35118]
+#transpose!
+counts_gtcga <- t(counts_gtcga) #large numeric matrix with rows as genes
+```
+coldata, rows as samples
+```{r}
+which( colnames(full_train)=="gtex" ) #35118 stulpelis
+coldata_gtcga <- full_train[, c(1:47, 35165)]
+colnames(coldata_gtcga) #48
+```
+Normalization DESEQ
+```{r}
+#first make sure the requiriments
+all(rownames(coldata_gtcga) %in% colnames(counts_gtcga))
+nrow(coldata_gtcga) == ncol(counts_gtcga)
+all(rownames(coldata_gtcga) == colnames(counts_gtcga)) #reikia reagangint
+```
+Create deseq object
+```{r}
+# create dds
+dds <- DESeqDataSetFromMatrix(countData = counts_gtcga,
+                              colData = coldata_gtcga,
+                              design = ~ 1) # not spcifying model
+
+## remove all genes with counts < 15 in more than 75% of samples (338*0.75=253)
+## suggested by WGCNA on RNAseq FAQ
+
+dds75 <- dds[rowSums(counts(dds) >= 15) >= 254,] #237
+nrow(dds75) # 4684 genes
+
+
+# perform variance stabilization
+dds_norm <- vst(dds75)
+
+
+# get normalized counts
+norm.counts <- assay(dds_norm) %>% 
+  t()
+```
+# Model selection, lasso (no weak values left)
+```{r}
+#using norm.counts
+#clinical feature: gtex or TCGA data
+dim(norm.counts) #buvo tiek:494 4684
+train_response <- as.factor(coldata_gtcga$gtex)
+res_gtex = cv.glmnet(
+  x = norm.counts,
+  y = train_response,
+  alpha = 1,
+  family = "binomial"
+)
+res_gtex #atrenka 8
+# Getting genes that contribute for the prediction
+res_coef_gtex = coef(res_gtex, s="lambda.min") # the "coef" function returns a sparse matrix
+head(res_coef_gtex) # in a sparse matrix the "." represents the value of zero
+# get coefficients with non-zero values
+res_coef_gtex = res_coef_gtex[res_coef_gtex[,1] != 0,] 
+# note how performing this operation changed the type of the variable
+# remove first coefficient as this is the intercept, a variable of the model itself
+res_coef_gtex = res_coef_gtex[-1]
+res_coef_gtex_names = names(res_coef_gtex) # get names of the (non-zero) variables.
+length(res_coef_gtex_names) # number of selected genes #8 lambda min, ir #8 genes with 1SE
+```
+for biomart reikia karta paleist
+```{r}
+# cia uztenka karta padaryt
+listEnsembl() #shows available databases
+ensembl <- useEnsembl(biomart = "genes") #unsuportive gali but
+datasets <- listDatasets(ensembl) #issirinkti human genes
+ensembl.con <- useMart("ensembl", dataset = 'hsapiens_gene_ensembl') #name of data base ir data set
+attr <- listAttributes(ensembl.con)
+filters <- listFilters(ensembl.con)
+```
+# Final gene names
+```{r}
+#convert relavant gene names
+res_coef_gtex_names <- gsub("\\..*", "",res_coef_gtex_names)
+res_coef_gtex_names
+#biomart
+gtcga_genes <- getBM(attributes = c('ensembl_gene_id','external_gene_name'), #values to retreve
+      filters = "ensembl_gene_id", #input on quary
+      values = res_coef_gtex_names,
+      mart = ensembl.con) #sukurtas conection object
+gtcga_genes
+```
+## GO for genes
+```{r}
+#from org.Hs.eg.db
+#need to remove na 
+gtcga_genes1 <- gtcga_genes[-c(4, 8),]
+gtcga_genes.symbols <- gtcga_genes1$external_gene_name
+gtcga_genes.entrez <- mapIds(org.Hs.eg.db, gtcga_genes.symbols, 'ENTREZID', 'SYMBOL')
+#names chr vector of entrez ids
+ggo.gtcga <- groupGO(gene = gtcga_genes.entrez,
+               OrgDb    = org.Hs.eg.db,
+               ont      = "CC",
+               level    = 3,
+               readable = TRUE)
+
+ggo.gtcga <- as.data.frame(ggo.gtcga) # count is 0 because i provided no counts!
+ggo.gtcga_filt <- ggo.gtcga %>% filter(Count != "0")
+ggo.gtcga_filt
+```
+```{r}
+#ego = enrichment go
+ego.gtcga <- enrichGO(gene = gtcga_genes.entrez,
+                OrgDb         = org.Hs.eg.db,
+                ont           = "CC",
+                pAdjustMethod = "BH",
+                pvalueCutoff  = 0.05,
+                qvalueCutoff  = 0.10,
+        readable      = TRUE)
+as.data.frame(ego.gtcga) #nothing selected
+```
+
+as nothing happens resort to google:
+TSPYL2/SNORD104/RPL17 "organelle"
+CLDN4 "intrinsic component of membrane": claudinas4 yra tight junction narys, 
+galima susijęs ir su signalo perdavimu. "Knockdown of CLDN4 has also been shown to sensitize ovarian cancer cells to certain chemotherapeutic agents" PMID: 35665865
+
+Testis-specific Y-encoded-like protein TSPYL2 -> in damage repair
+
+Small nucleolar RNA (snoRNA) SNORD104 in endometrial cancer regulates 2'-O-methylation of PARP1, so damage repair again
+
+Ribosomal Protein L17 RPL17 from the large ribosomal subunit.
+
+Other genes (no known functions):
+RPL41P5: ribosomal protein L41 pseudogene 5 
+PTMAP4: pseudogene that encodes a prothymosin alpha pseudogene 4.
+ir 2 so novel, that there is no name
+
+# Clustering?
+```{r}
+#be avare to delete everything!!!!! clustering takes so much time
+```
+
