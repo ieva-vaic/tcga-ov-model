@@ -103,6 +103,9 @@ all(rownames(colData) == colnames(data.subset)) #reikia reagangint
 order <- colnames(data.subset)
 colData <- colData[match(order, colData$barcode), ] 
 all(rownames(colData) == colnames(data.subset)) #reikia reagangint
+
+saveRDS(colData, "C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-OV-mRNA data/mRNA and clinical data TCGA-OV/coldata_wgna_mrna.RDS")
+saveRDS(data.subset, "C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-OV-mRNA data/mRNA and clinical data TCGA-OV/outlier_data_subset_wgna_mrna.RDS")
 ```
 # 3. DESEq2 noramalization, but without any model
 ```{r}
@@ -127,7 +130,7 @@ dds_norm <- vst(dds75)
 # get normalized counts
 norm.counts <- assay(dds_norm) %>% 
   t()
-
+saveRDS(norm.counts, "norm.counts.wcgcna.mrna.RDS")
 ```
 
 # 4. Network Construction
@@ -191,13 +194,13 @@ bwnet <- blockwiseModules(norm.counts,
                           randomSeed = 1234,
                           verbose = 3)
 
-saveRDS(bwnet, "bwnet.RDS") 
+saveRDS(bwnet, "bwnet.mRNA.TCGA-OV.RDS") 
 #a save is necessary because bwnet can run for hours and then quit because of memory issues
 cor <- temp_cor #sugražinam
 ```
 eigengene is gene expression profile of a cluster: get profiles for each "color"/cluster
 ```{r}
-bwnet <- readRDS("bwnet.RDS")
+bwnet <- readRDS("C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-model/mRNA-TCGA-OV/bwnet.mRNA.TCGA-OV.RDS")
 # 5. Module Eigengenes ---------------------------------------------------------
 module_eigengenes <- bwnet$MEs #MEs yra module egenges
 
@@ -223,11 +226,12 @@ plotDendroAndColors(bwnet$dendrograms[[1]], cbind(bwnet$unmergedColors, bwnet$co
 ```
 # 5. After unsupervised clustering: Relate modules to traits 
 pasirinkame traits! šiuo atveju dead/alive ir figo stage
+
 ```{r}
 # create traits file - binarize categorical variables
 traits <- colData %>% 
   mutate(vital_status_bin = ifelse(grepl('Dead', vital_status), 1, 0)) %>% 
-  dplyr::select(48) #select the new colum
+  dplyr::select(49) #select the new colum, after the last one
 
 #for figo stage, padaryti palyginimą tarp visų galimų stadijų
 severity.out <- binarizeCategoricalColumns(colData$figo_stage,
@@ -236,6 +240,7 @@ severity.out <- binarizeCategoricalColumns(colData$figo_stage,
                                            minCount = 1)
 traits <- cbind(traits, severity.out)
 ```
+
 
 ```{r}
 # Define numbers of genes and samples

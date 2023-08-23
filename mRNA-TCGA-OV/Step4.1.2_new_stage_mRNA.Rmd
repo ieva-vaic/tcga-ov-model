@@ -1,0 +1,451 @@
+---
+title: "Step4.1.2_new_stage_mRNA"
+author: "Ieva"
+date: "2023-08-23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(DESeq2)
+library(glmnet)
+library(biomaRt)
+library(org.Hs.eg.db)
+library(gridExtra)
+library(WGCNA)
+library(CorLevelPlot)
+library(clusterProfiler) #go
+```
+# Setup
+
+## load non-normalized data and clinical data
+```{r}
+# 20230822 the new coding for stage 
+#READ in data: coldata/pheno data and data.subset after outliers befor deseq
+colData <- readRDS("C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-OV-mRNA data/mRNA and clinical data TCGA-OV/coldata_wgna_mrna.RDS")
+data.subset <- readRDS("C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-OV-mRNA data/mRNA and clinical data TCGA-OV/outlier_data_subset_wgna_mrna.RDS")
+```
+## create new variables
+```{r}
+#new coding for the Stage
+table(colData$figo_stage, useNA = "a")
+colData$figo_stage_f = gsub("[ABC]$", "", colData$figo_stage)
+table(colData$figo_stage_f, useNA = "a")
+
+#remove na
+colData <- filter(colData, !is.na(colData$figo_stage_f)) 
+#remove stage I because only one case is present
+colData <- filter(colData, colData$figo_stage != "Stage IC") 
+table(colData$figo_stage_f, useNA = "a")
+
+#new coding: stage II is -1, stage III is 0, stage 3 is +1
+colData$figo_recode <- colData$figo_stage_f
+str(colData$figo_recode)
+colData$figo_recode <- ordered(colData$figo_recode, levels = c("Stage II", "Stage III", "Stage IV"))
+table(colData$figo_recode)
+
+#new coding with numbers
+colData$figo_recode_num <- colData$figo_stage_f
+colData$figo_recode_num <- recode(colData$figo_recode_num, "Stage II" = -1, "Stage III" = 0, "Stage IV" = 1)
+colData$figo_recode_num
+```
+## filter counts 
+```{r}
+#now that the 2 NA and 1 stage I is deleted, make sure the counts are equal as well
+all(rownames(colData) %in% colnames(data.subset))
+nrow(colData) == ncol(data.subset)
+stage_samples <- rownames(colData) #make a list of new samples
+stage_data <- data.subset[, stage_samples] #subset by sample name
+dim(stage_data)
+nrow(colData) == ncol(stage_data)
+all(rownames(colData) == colnames(stage_data)) #all good
+```
+## DESEQ2
+```{r}
+
+# create dds
+dds <- DESeqDataSetFromMatrix(countData = stage_data,
+                              colData = colData,
+                              design = ~ 1) # not spcifying model
+
+## remove all genes with counts < 15 in more than 75% of samples (338*0.75=253)
+## suggested by WGCNA on RNAseq FAQ
+
+dds75 <- dds[rowSums(counts(dds) >= 15) >= 254,] #237
+nrow(dds75) # 17652 genes
+
+
+# perform variance stabilization
+dds_norm <- vst(dds75)
+
+
+# get normalized counts
+norm.counts <- assay(dds_norm) %>% 
+  t()
+saveRDS(norm.counts, "C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-OV-mRNA data/mRNA and clinical data TCGA-OV/norm.counts.new_stages.mrna.RDS")
+
+```
+# modeliai
+## GLMET No.1
+using norm.counts
+clinical feature: figo_recode (II>III>IV)
+model family gaussian -> erroras, todel multinomial
+```{r}
+train_response_recode <- colData$figo_recode
+res_recoded = cv.glmnet(
+  x = norm.counts,
+  y = train_response_recode,
+  alpha = 0.5, 
+  family = "multinomial"
+)
+res_recoded # nieko neselektina
+```
+
+## GLMET No.2
+using norm.counts
+clinical feature: figo_recode_num
+model family gaussian -> 
+```{r}
+train_response_recode_num <- colData$figo_recode_num
+res_recoded_num = cv.glmnet(
+  x = norm.counts,
+  y = train_response_recode_num,
+  alpha = 0.5, 
+  family = "gaussian"
+)
+res_recoded_num #68 nauji
+## glmnet No.2.1
+res_recoded_num_multi = cv.glmnet(
+  x = norm.counts,
+  y = train_response_recode_num,
+  alpha = 0.5, 
+  family = "multinomial"
+)
+res_recoded_num_multi #0 isirenka
+```
+
+
+## only working model GO
+```{r}
+#skip testing model, requires test data
+# Getting genes that contribute for the prediction
+res_coef_recoded_num = coef(res_recoded_num, s="lambda.min") # the "coef" function returns a sparse matrix
+head(res_coef_recoded_num) # in a sparse matrix the "." represents the value of zero
+# get coefficients with non-zero values
+res_coef_recoded_num = res_coef_recoded_num[res_coef_recoded_num[,1] != 0,] 
+# note how performing this operation changed the type of the variable
+# remove first coefficient as this is the intercept, a variable of the model itself
+res_coef_recoded_num = res_coef_recoded_num[-1]
+relevant_genes_recoded_num = names(res_coef_recoded_num) # get names of the (non-zero) variables.
+length(relevant_genes_recoded_num) # 68
+
+#convert relavant gene names
+relevant_genes_recoded_num <- gsub("\\..*", "",relevant_genes_recoded_num)
+relevant_genes_recoded_num
+#biomart
+# cia uztenka karta padaryt
+listEnsembl() #shows available databases
+ensembl <- useEnsembl(biomart = "genes") #unsuportive gali but
+datasets <- listDatasets(ensembl) #issirinkti human genes
+ensembl.con <- useMart("ensembl", dataset = 'hsapiens_gene_ensembl') #name of data base ir data set
+attr <- listAttributes(ensembl.con)
+filters <- listFilters(ensembl.con)
+##
+recorded.num.genes <- getBM(attributes = c('ensembl_gene_id','external_gene_name'), #values to retreve
+                 filters = "ensembl_gene_id", #input on quary
+                 values = relevant_genes_recoded_num,
+                 mart = ensembl.con) #sukurtas conection object
+recorded.num.genes
+
+#GO for 68 genes
+#from org.Hs.eg.db
+recorded.num.symbols <- recorded.num.genes$external_gene_name
+recorded.num.entrez <- mapIds(org.Hs.eg.db, recorded.num.symbols, 'ENTREZID', 'SYMBOL')
+#no na's allowed - this time na's are in go terms
+recorded.num.entrez <- recorded.num.entrez[!is.na(recorded.num.entrez)] #liko 64
+#names chr vector of entrez ids
+
+ggo.recorded.num <- groupGO(gene = recorded.num.entrez,
+                     OrgDb    = org.Hs.eg.db,
+                     ont      = "CC",
+                     level    = 3,
+                     readable = TRUE)
+
+head(ggo.recorded.num) # count is 0 because i provided no counts!
+ggo.recorded_num_df <- as.data.frame(ggo.recorded.num)
+ggo.filtered.recorded_num_df <- ggo.recorded_num_df %>% filter(Count != "0")
+ggo.filtered.recorded_num_df
+
+#ego = enrichment go
+ego.recorded.num <- enrichGO(gene = recorded.num.entrez,
+                      OrgDb         = org.Hs.eg.db,
+                      ont           = "CC",
+                      pAdjustMethod = "BH",
+                      pvalueCutoff  = 0.01,
+                      qvalueCutoff  = 0.05,
+                      readable      = TRUE)
+as.data.frame(ego.recorded.num) #0 terms
+
+```
+
+# wgcna 
+WGCNA mostly for nice pictures
+## network construction
+```{r}
+# Choose a set of soft-thresholding powers
+power <- c(c(1:10), seq(from = 12, to = 50, by = 2))
+
+# Call the network topology analysis function
+#stf runs quite slow!
+sft <- pickSoftThreshold(norm.counts,
+                         powerVector = power,
+                         networkType = "signed",
+                         verbose = 5)
+sft.data <- sft$fitIndices
+
+# visualization to pick power
+
+a1 <- ggplot(sft.data, aes(Power, SFT.R.sq, label = Power)) +
+  geom_point() +
+  geom_text(nudge_y = 0.1) +
+  geom_hline(yintercept = 0.8, color = 'red') +
+  labs(x = 'Power', y = 'Scale free topology model fit, signed R^2') +
+  theme_classic()
+
+
+a2 <- ggplot(sft.data, aes(Power, mean.k., label = Power)) +
+  geom_point() +
+  geom_text(nudge_y = 0.1) +
+  labs(x = 'Power', y = 'Mean Connectivity') +
+  theme_classic()
+
+grid.arrange(a1, a2, nrow = 2) #library gridExtra
+```
+```{r, eval = FALSE}
+norm.counts <- readRDS("C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-OV-mRNA data/mRNA and clinical data TCGA-OV/norm.counts.new_stages.mrna.RDS")
+
+# convert matrix to numeric
+norm.counts[] <- sapply(norm.counts, as.numeric) #reik šitu dalyku po to esančiai eilutei 
+
+soft_power <- 6
+temp_cor <- cor #cor function pasirinkti kitaip namespace error bus
+cor <- WGCNA::cor #naudosim sita
+
+
+# memory estimate w.r.t blocksize
+bwnet <- blockwiseModules(norm.counts,
+                          maxBlockSize = 18000, #for fast clustering: how many genes in a block, visi genai viename bloke
+                          TOMType = "signed",
+                          power = soft_power,
+                          mergeCutHeight = 0.25,
+                          numericLabels = FALSE,
+                          randomSeed = 1234,
+                          verbose = 3)
+
+saveRDS(bwnet, "C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-OV-mRNA data/mRNA and clinical data TCGA-OV/bwnet_stages.mRNA.RDS") 
+#a save is necessary because bwnet can run for hours and then quit because of memory issues
+cor <- temp_cor #sugražinam
+```
+## Module Eigengenes
+```{r}
+bwnet <- readRDS("C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-OV-mRNA data/mRNA and clinical data TCGA-OV/bwnet_stages.mRNA.RDS")
+
+module_eigengenes <- bwnet$MEs #MEs yra module egenges
+
+# get number of genes for each module
+table(bwnet$colors) 
+
+# Plot the dendrogram and the module colors before and after merging underneath
+plotDendroAndColors(bwnet$dendrograms[[1]], cbind(bwnet$unmergedColors, bwnet$colors),
+                    c("unmerged", "merged"),
+                    dendroLabels = FALSE,
+                    addGuide = TRUE,
+                    hang= 0.03,
+                    guideHang = 0.05)
+```
+## Relate modules to traits 
+pasirinkame traits! šiuo atveju stadijas ir also for the old times vital status
+```{r}
+#is naujo ikeliu coldata nes kai leidau bwnet viska istryniau is prjet spaco!
+# create traits file - binarize categorical variables
+traits <- colData %>% 
+  mutate(vital_status_bin = ifelse(grepl('Dead', vital_status), 1, 0)) %>% 
+  dplyr::select(51) #select the new colum, after the last one
+
+#for figo stage, padaryti palyginimą tarp visų galimų stadijų
+severity.out <- binarizeCategoricalColumns(colData$figo_recode,
+                                           includePairwise = TRUE,
+                                           includeLevelVsAll = TRUE,
+                                           minCount = 1)
+traits <- cbind(traits, severity.out)
+```
+```{r}
+# Define numbers of genes and samples
+nSamples <- nrow(norm.counts)
+nGenes <- ncol(norm.counts)
+#find corelation between eigengenes
+module.trait.corr <- cor(module_eigengenes, traits, use = 'p') #pearson cor between eigengenes and traits
+module.trait.corr.pvals <- corPvalueStudent(module.trait.corr, nSamples) #cor p values
+```
+
+a heatmap between eigengenes and chosen traits
+```{r, out.height="50000%"}
+heatmap.data <- merge(module_eigengenes, traits, by = 'row.names') #combine  to data frame
+
+heatmap.data <- heatmap.data %>% 
+  column_to_rownames(var = 'Row.names') #first colum negali buti numeric todel convertuojam i rownames
+
+colnames(heatmap.data) 
+
+corplot <- CorLevelPlot(heatmap.data,
+             x = names(heatmap.data)[103:108], #CLINICAL
+             y = names(heatmap.data)[1:102], #"COLORS"
+             col = c("blue1", "skyblue", "white", "pink", "red"))
+corplot
+#significance denoted by *
+```
+
+## Choosing favorite color
+Mane šiuo atveju labiausiai domina MEblue
+```{r}
+module.gene.mapping <- as.data.frame(bwnet$colors) #modules stored as colors
+
+mgmSTAGES <- module.gene.mapping %>% 
+  filter(`bwnet$colors` == "blue") %>% 
+  rownames() #filtruosim genus kurie yra musu norimos "spalvos" 
+
+```
+## Identifying driver genes
+```{r}
+module.membership.measure <- cor(module_eigengenes, norm.counts, use = 'p')
+module.membership.measure.pvals <- corPvalueStudent(module.membership.measure, nSamples)
+#Calculate the gene association significance with traits and associated p-values
+gene.signf.corr.STAGES <- cor(norm.counts, traits$`data.Stage IV.vs.Stage II`, use = 'p')
+gene.signf.corr.pvals.STAGES <- corPvalueStudent(gene.signf.corr.STAGES, nSamples)
+ensembl.ids.STAGES <- gene.signf.corr.pvals.STAGES %>% 
+  as.data.frame() %>% 
+  arrange(V1) %>% 
+  head(25) %>% #how many genes to take? in this case top 25, blue has 737 genes 
+  rownames()
+ensembl.ids.STAGES #top 25 
+```
+## Naming top 25 genes and go
+```{r}
+#convert relavant gene names
+relevant_genes_STAGES <- gsub("\\..*", "", ensembl.ids.STAGES)
+#biomart
+ensembl.ids <- as.data.frame(relevant_genes_STAGES)
+ensembl <- useEnsembl(biomart = "genes") #unsuportive gali but
+datasets <- listDatasets(ensembl) #issirinkti human genes
+
+ensembl.con <- useMart("ensembl", dataset = 'hsapiens_gene_ensembl') #name of data base ir data set
+
+attr <- listAttributes(ensembl.con)
+filters <- listFilters(ensembl.con)
+
+STAGES <- getBM(attributes = c('ensembl_gene_id','external_gene_name'), #values to retreve
+      filters = "ensembl_gene_id", #input on quary
+      values = relevant_genes_STAGES,
+      mart = ensembl.con) #sukurtas conection object
+STAGES
+# I see one without a name 
+STAGES <- STAGES[-23, ]
+STAGES
+```
+```{r}
+#from org.Hs.eg.db
+stages.symbols <- STAGES$external_gene_name
+stages.entrez <- mapIds(org.Hs.eg.db, stages.symbols, 'ENTREZID', 'SYMBOL')
+#names chr vector of entrez ids
+
+ggo.STAGES <- groupGO(gene = stages.entrez,
+               OrgDb    = org.Hs.eg.db,
+               ont      = "CC",
+               level    = 3,
+               readable = TRUE)
+
+head(ggo.STAGES) # count is 0 because i provided no counts!
+ggo.STAGES_df <- as.data.frame(ggo.STAGES)
+ggo.STAGES_df <- ggo.STAGES_df %>% filter(Count != "0")
+ggo.STAGES_df
+
+#ego = enrichment go
+ego.STAGES <- enrichGO(gene = stages.entrez,
+                OrgDb         = org.Hs.eg.db,
+                ont           = "CC",
+                pAdjustMethod = "BH",
+                pvalueCutoff  = 0.05,
+                qvalueCutoff  = 0.10,
+        readable      = TRUE)
+as.data.frame(ego.STAGES) #nothing selected
+goplot(ego.STAGES)
+```
+
+## Top 5 genes
+```{r}
+ensembl.ids.STAGES5 <- gene.signf.corr.pvals.STAGES %>% 
+  as.data.frame() %>% 
+  arrange(V1) %>% 
+  head(5) %>% #how many genes to take? in this case top 25, blue has 737 genes 
+  rownames()
+ensembl.ids.STAGES5 #top 25 
+relevant_genes_STAGES5 <- gsub("\\..*", "", ensembl.ids.STAGES5)
+STAGES5 <- getBM(attributes = c('ensembl_gene_id','external_gene_name'), #values to retreve
+      filters = "ensembl_gene_id", #input on quary
+      values = relevant_genes_STAGES5,
+      mart = ensembl.con) #sukurtas conection object
+STAGES5
+stages5.symbols <- STAGES5$external_gene_name
+stages5.entrez <- mapIds(org.Hs.eg.db, stages5.symbols, 'ENTREZID', 'SYMBOL')
+#names chr vector of entrez ids
+
+ggo.STAGES5 <- groupGO(gene = stages5.entrez,
+               OrgDb    = org.Hs.eg.db,
+               ont      = "CC",
+               level    = 3,
+               readable = TRUE)
+
+ggo.STAGES5_df <- as.data.frame(ggo.STAGES5)
+ggo.STAGES5_df <- ggo.STAGES5_df %>% filter(Count != "0")
+ggo.STAGES5_df
+
+ego.STAGES5 <- enrichGO(gene = stages5.entrez,
+                OrgDb         = org.Hs.eg.db,
+                ont           = "CC",
+                pAdjustMethod = "BH",
+                pvalueCutoff  = 0.05,
+                qvalueCutoff  = 0.10,
+        readable      = TRUE)
+as.data.frame(ego.STAGES5) #nothing selected
+goplot(ego.STAGES5)
+```
+Taigi top 5 iš WGCNE blue II vs IV yra:
+"REXO2"      "RNA exonuclease 2" ;
+"RPS25"     "small ribosomal subunit protein eS25";
+"ATP5MG"    "mitochondrial ATP synthase subunit g";
+"PRKRA"     "Protein Activator of Interferon Induced Protein Kinase EIF2AK2 or PACT, is a protein that is encoded by the PRKRA gene - When a cell is under stress, the PACT protein, produced by the PRKRA gene, activates another protein called PKR. PKR then inactivates the eIF2 alpha (eIF2α) protein, which lowers protein "
+"SDHD"    " succinate dehydrogenase complex subunit D"
+
+Taigi 3/5 realiai mitohondijų dalys, 
+1 ribosomos ir 1 su stresu susijusio atsako. 
+
+# Ar kas nors kartojasi iš genų?
+```{r}
+intercetion <- intersect(recorded.num.symbols, stages.symbols) #okay tai tarp glm 65 genu ir top 25 genu wgcna šiti persidengia
+intercetion
+```
+"DCUN1D5"     "Defective In Cullin Neddylation 1 Domain Containing 5" = DDR
+"CFL2"        "cofilin 2" = actin filament dynamics
+"PRKRA"       "rotein Activator of Interferon-induced Protein Kinase EIF2AK2 (PACT) " -> žr. aukščiau
+"ZNF74"       "Zinc Finger Protein 74, enable DNA-binding transcription factor activity"
+"LINC01521"   lncRNA, no predicted function
+
+Results SAVE!
+```{r}
+write.csv(recorded.num.symbols, "C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-OV-mRNA data/Reports mRNA/stages2_3_4_genes_elastic_net.csv")
+write.csv(stages.symbols, "C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-OV-mRNA data/Reports mRNA/stages2_4_genes_wgcne.csv")
+write.csv(intercetion, "C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-OV-mRNA data/Reports mRNA/stage_wgne_glm_intercept.csv")
+```
+
+
