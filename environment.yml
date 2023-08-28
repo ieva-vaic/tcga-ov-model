@@ -21,7 +21,8 @@ dependencies:
   - bioconductor-DESeq2=1.40.2 
   - bioconductor-biomaRt=2.56.1 
   - bioconductor-topGO=2.52.0
-  - bioconductor-phantasusž1.20.2
+  - bioconductor-phantasus=1.20.2
+  - bioconductor-GDCRNATools=1.20.0
 #corlevelplot is not in conda
 
 
