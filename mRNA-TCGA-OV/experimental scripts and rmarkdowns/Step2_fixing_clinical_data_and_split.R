@@ -4,7 +4,8 @@
 #secondary navikus ir prior treatment atsiskirt i weird
 #atsiskiri jei 3 data train, test ir weird, kaip minimum vektoriai atskiri su vardais
 #parsinti ta keista  treatmentstulpeli 
-setwd("~/tcga-ov-data")
+#setwd("~/tcga-ov-data")
+setwd("C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data")
 # Load packages
 library("TCGAbiolinks")
 library("caret")
@@ -12,7 +13,7 @@ library("dplyr")
 library("tidyr")
 library("tidyverse")
 tcga_data = readRDS(file = "tcga_data.RDS") 
-pheno <- readRDS(file = "/home/ieva/tcga-ov-data//pheno.RDS")
+pheno <- readRDS(file = "pheno.RDS")
 #####################################################################
 #Chek the data 
 table(pheno$figo_stage, pheno$vital_status, useNA='a')
@@ -120,21 +121,6 @@ write.csv(weird_cases, "weird_cases.csv", quote = T, row.names = F) #normal quot
 write.csv(x_train, "train_data.csv", quote = T, row.names = F)
 write.csv(x_test, "test_data.csv", quote = T, row.names = F )
 
-#split the rest of the data according to split clinical dataframes
-# for most normal analyses I want a matrix as it is given by assay function
-#option 1: go back and filter original matrix
-counts_ov <- assay(tcga_data)
-
-train_counts2 <- counts_ov[, colnames(counts_ov) %in% train_barcodes]
-saveRDS(train_counts2, "train_count_matrix.RDS")
-
-#same with other count matrixes
-test_counts2 <- counts_ov[, colnames(counts_ov) %in% test_barcodes]
-saveRDS(test_counts2, "test_count_matrix.RDS")
-
-weird_counts2 <- counts_ov[, colnames(counts_ov) %in% weird_barcodes]
-saveRDS(weird_counts2, "weird_count_matrix.RDS") #this is weird because 1 variable too much
-
 #####################################################################################
 #spliting other kinds of count data just in case
 #assay data converted to dataframe
@@ -157,27 +143,22 @@ write.csv(test_counts, "test_counts.csv", quote = F, row.names = F)
 write.csv(train_counts, "train_counts.csv", quote = F, row.names = F)
 write.csv(weird_counts, "weird_counts.csv", quote = F, row.names = F )
 
-####################################################################################
-#useless but left for reference if I need semijoin that filters while joining
-# #jsemioin counts and filtered clinical
-# counts_ov <- tibble::rownames_to_column(counts_ov, "row_names")
-# counts_ov$barcode <- counts_ov$row_names
-# counts_ov <- counts_ov[!names(counts_ov) %in% 'row_names']
-# #"test data"
-# test_data_df = list(x_test, counts_ov)
-# test_data_df <- test_data_df %>% reduce(semi_join, by='barcode')
-# View(test_data_df)
-# 
-# train_data_df = list(x_train, counts_ov)
-# train_data_df <- train_data_df %>% reduce(semi_join, by='barcode')
-# View(train_data_df)
-# 
-# weird_data_df = list(weird_cases, counts_ov)
-# weird_data_df <- weird_data_df %>% reduce(semi_join, by='barcode')
-# View(weird_data_df)
+############################################################################
 
-# write.csv(test_data_df, "test_data_df.csv", quote = F, row.names = F)
-# write.csv(train_data_df, "train_data_df.csv", quote = F, row.names = F)
-# write.csv(weird_data_df, "weird_data_df.csv", quote = F, row.names = F )
+#split the rest of the data according to split clinical dataframes
+# for most normal analyses I want a matrix as it is given by assay function
+#option 1: go back and filter original matrix
+counts_ov <- assay(tcga_data)
+
+train_counts2 <- counts_ov[, colnames(counts_ov) %in% train_barcodes]
+saveRDS(train_counts2, "train_count_matrix.RDS")
+
+#same with other count matrixes
+test_counts2 <- counts_ov[, colnames(counts_ov) %in% test_barcodes]
+saveRDS(test_counts2, "test_count_matrix.RDS")
+
+weird_counts2 <- counts_ov[, colnames(counts_ov) %in% weird_barcodes]
+saveRDS(weird_counts2, "weird_count_matrix.RDS") #this is weird because 1 variable too much
+
 
 

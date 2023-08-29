@@ -38,7 +38,7 @@ gtex_df <- as.data.frame(gtex_counts)
 rownames(gtex_df) <- gtex_df$Name
 gtex_df <- gtex_df[, -c(1,2)]
 gtex_df[,1:180] <- lapply(gtex_df[,1:180], as.numeric)
-head(str(gtex_df)) #56200 genu
+dim(gtex_df) #56200 genu
 ```
 
 ## open TCGA
