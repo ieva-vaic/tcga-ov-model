@@ -1,14 +1,10 @@
 #This is the script no.1 required for downloading the TCGA data with TCGAbiolinks
-BiocManager::install("edgeR")
-BiocManager::install("genefilter")
-BiocManager::install("BioinformaticsFMRP/TCGAbiolinksGUI.data", force = TRUE)
-BiocManager::install("BioinformaticsFMRP/TCGAbiolinks", force = TRUE)
-#devtools::install_github("BioinformaticsFMRP/TCGAbiolinks")
 # Load packages
 library("TCGAbiolinks")
 library("SummarizedExperiment")
 
-setwd("/home/ieva/tcga-ov-data/")
+#setwd("/home/ieva/tcga-ov-data/")
+setwd("C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-OV-mRNA data/mRNA and clinical data TCGA-OV/")
 GDCprojects = getGDCprojects()
 GDCprojects[c("project_id", "name")] #I choose ovarian cancer project TCGA-OV
 

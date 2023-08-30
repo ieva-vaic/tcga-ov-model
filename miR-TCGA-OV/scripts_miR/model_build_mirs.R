@@ -12,7 +12,7 @@ train_LOGfull_mir <- readRDS(snakemake@input[[1]])
 ###############################################################################
 #model training
 # step 1: set up data
-#train_LOGfull_mir <- readRDS("y_train.RDS")
+train_LOGfull_mir <- readRDS("y_train.RDS")
 
 #I need a count matrix  where persons are in rows and genes in columns
 #I need response factor
