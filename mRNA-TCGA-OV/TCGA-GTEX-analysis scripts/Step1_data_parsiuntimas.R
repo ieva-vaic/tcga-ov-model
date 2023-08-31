@@ -3,7 +3,7 @@
 library("TCGAbiolinks")
 library("SummarizedExperiment")
 #easiest to be in the folder before calling R instead of setwd 
-setwd("/home/ieva/tcga-ov-data/") #wsl
+setwd("/home/ieva/TCGA-OV-data/") #wsl
 
 ## Build your final query
 query_TCGA = GDCquery(

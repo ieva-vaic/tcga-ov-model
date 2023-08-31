@@ -1,5 +1,6 @@
 #Step 2: splice gtex and TCGA-OV mRNA counts together
 library(tidyverse)
+library(tximport)
 library("TCGAbiolinks")
 library("SummarizedExperiment")
 setwd("~/rprojects/TCGA-OV-data")
@@ -14,24 +15,42 @@ head(colnames(gtex_counts))
 
 #make a numeric dataframe from gtex
 gtex_df <- as.data.frame(gtex_counts)
+#read in tcga counts with names data for mRNA 
+tcga_counts <- readRDS("tcga_with_names.RDS") ####
+
+#get how many gene names match between gtex and tcga
+tcga_names <- tcga_counts$external_gene_name
+gtex_names <- gtex_df$Description
+sum(gtex_names %in% tcga_names) #36056
+sum(tcga_names %in% gtex_names) #35815
+sutampa <- intersect(gtex_names, tcga_names)
+"ARID1A" %in% sutampa #yra zinomi genai
+"NOTCH1" %in% sutampa #yra zinomi genai
+
+##what are the genes that do not match?
+not_matching <- tcga_counts[!(tcga_counts$external_gene_name %in% sutampa), ]
+table(not_matching$gene_biotype, useNA="a") #1583 tiek protein coding prarandama!
+##
 rownames(gtex_df) <- gtex_df$Name
-gtex_df <- gtex_df[, -c(1,2)]
-gtex_df[,1:180] <- lapply(gtex_df[,1:180], as.numeric)
+gtex_df[,3:180] <- lapply(gtex_df[,3:180], as.numeric)
 dim(gtex_df) #56200 genes
+gtex_df$external_gene_name <- gtex_df$Description
+gtex_df$ensembl_gene_id <- gsub("\\..*", "",gtex_df$Name)
+sum(gtex_df$ensembl_gene_id %in% tcga_counts$ensembl_gene_id) #55513 sutampa tiek
 
-#read in tcga counts data for mRNA 
-tcga_data <- readRDS("tcga_data.RDS")
-
-##assay data converted to dataframe
-mRNA_counts <- assay(tcga_data)
-mRNA_counts <- as.data.frame(mRNA_counts) #60660 transcripts (rows), 429 zmones (cols) 
-mRNA_counts[,1:429] <- lapply(mRNA_counts[,1:429], as.numeric)
-str(mRNA_counts) #60660 genes
-
-#filter rows to match the tcga transcript ids
-gtex_names <- rownames(gtex_df)
-filtered_mRNA <- filter(mRNA_counts, rownames(mRNA_counts) %in% gtex_names) #tidyverse command
-dim(filtered_mRNA) #liko 35117 genai
+#also multiple matches in left_join, so not an option
+##############################################################################
+#the problem when joinging on gene names is that not all gene names is unique
+#jei jungt per transcriptus irgi not good
+gtex_ARID <- gtex_df %>% 
+  filter(external_gene_name == "ARID1A")
+tcg_arid <- tcga_counts %>% 
+  filter(external_gene_name == "ARID1A")
+#skiriasi transciprtai
+#ENSG00000117713.20 tcga
+#ENSG00000117713.18 gtex
+################################################################################
+#I need single line per gene on both count matrixes!!!!!!!!
 
 ###############################################################################
 #splice with pheno
