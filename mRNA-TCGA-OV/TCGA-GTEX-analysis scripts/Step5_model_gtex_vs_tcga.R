@@ -1,10 +1,11 @@
 #Step 5, model gtex vs tcga
+setwd("~/rprojects/TCGA-OV-data") #wsl
 library(glmnet)
 library(biomaRt)
 library(tidyverse)
 #because the normalized hplot was bad this might not be the most appropirate?
-gtex_counts_train <- readRDS( "C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-OV-mRNA data/mRNA and clinical data TCGA-OV/train_gtcga_normcounts.RDS")
-gtex_pheno_train <-readRDS( "C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-OV-mRNA data/mRNA and clinical data TCGA-OV/train_gtcga_coldata.RDS")
+gtex_counts_train <- readRDS( "train_gtcga_normcounts.RDS")
+gtex_pheno_train <- readRDS( "train_gtcga_coldata.RDS")
 
 #Model selection, lasso (no weak values left)
 
@@ -44,11 +45,11 @@ filters <- listFilters(ensembl.con)
 res_coef_gtex_names <- gsub("\\..*", "",res_coef_gtex_names)
 res_coef_gtex_names
 #biomart
-gtcga_genes <- getBM(attributes = c('ensembl_gene_id','external_gene_name'), #values to retreve
+gtcga_genes <- getBM(attributes = c('ensembl_gene_id','external_gene_name', "gene_biotype"), #values to retreve
                      filters = "ensembl_gene_id", #input on quary
                      values = res_coef_gtex_names,
                      mart = ensembl.con) #sukurtas conection object
-gtcga_genes
+gtcga_genes #okay just adding biotype solves problems
 
 # ensembl_gene_id external_gene_name
 # 1  ENSG00000142694              EVA1B Eva-1 homolog B, maybe immune function
@@ -57,12 +58,12 @@ gtcga_genes
 # 4  ENSG00000189143              CLDN4 claudinas4 yra tight junction narys
 # 5  ENSG00000207165            SNORA70 RNU70, small nucleolar RNA, H/ACA box 70
 # 6  ENSG00000210196              MT-TP mitochondrial transfer RNA (tRNA) proline
-# 7  ENSG00000226232           NPIPB14P Nuclear Pore Complex Interacting Protein Family Member B14 Pseudogene.
-# 8  ENSG00000231503             PTMAP4 pseudogene that encodes a prothymosin alpha pseudogene 4.
+# 7  ENSG00000226232           NPIPB14P #Nuclear Pore Complex Interacting Protein Family Member B14 Pseudogene.
+# 8  ENSG00000231503             PTMAP4 #pseudogene that encodes a prothymosin alpha pseudogene 4.
 # 9  ENSG00000253797             UTP14C a ribosome processome component
-# 10 ENSG00000256393            RPL41P5 ribosomal protein L41 pseudogene 5 
+# 10 ENSG00000256393            RPL41P5 #ribosomal protein L41 pseudogene 5 
 # 11 ENSG00000265681              RPL17 from the large ribosomal subunit
-# 12 ENSG00000266820            KPNA2P3 pseaudogene, unknown function
+# 12 ENSG00000266820            KPNA2P3 #pseaudogene, unknown function
 # 13 ENSG00000267368            UPK3BL1 Uroplakin -urothelium-specific
 
 ##save

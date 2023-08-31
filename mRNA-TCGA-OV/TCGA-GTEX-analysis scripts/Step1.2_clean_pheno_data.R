@@ -1,6 +1,7 @@
 #Step 1.2: clean pheno data
 library(tidyverse)
-pheno <- readRDS("C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-OV-mRNA data/mRNA and clinical data TCGA-OV/pheno.RDS")
+setwd("~/rprojects/TCGA-OV-data")
+pheno <- readRDS("pheno.RDS")
 #Step 2.1 parse and clean pheno data
 non_informative <- c("tumor_descriptor", "state", "is_ffpe", "tissue_type",
                      "days_to_diagnosis", "last_known_disease_status", "tissue_or_organ_of_origin", "prior_malignancy", 
@@ -34,5 +35,5 @@ rm(had_treatment_collaped)
 rm(drop_from_treamtment)
 rm(non_informative)
 
-saveRDS(pheno_final, "C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-OV-mRNA data/mRNA and clinical data TCGA-OV/pheno_no_empty_data.RDS")
+saveRDS(pheno_final, "pheno_no_empty_data.RDS")
 

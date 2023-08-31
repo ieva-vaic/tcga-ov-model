@@ -1,7 +1,9 @@
 #Step 2: splice gtex and TCGA-OV mRNA counts together
 library(tidyverse)
-
-gtex_counts <- readRDS("C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/GTEX/gtex_counts.RDS")
+library("TCGAbiolinks")
+library("SummarizedExperiment")
+setwd("~/rprojects/TCGA-OV-data")
+gtex_counts <- readRDS("GTEX/gtex_counts.RDS")
 
 #the gtex is now a matrix that looks like this:
 #rows: ENSEMBLIDS (transcipt level), all 56200 of them 
@@ -18,7 +20,7 @@ gtex_df[,1:180] <- lapply(gtex_df[,1:180], as.numeric)
 dim(gtex_df) #56200 genes
 
 #read in tcga counts data for mRNA 
-tcga_data <- readRDS("C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-OV-mRNA data/mRNA and clinical data TCGA-OV/tcga_data.RDS")
+tcga_data <- readRDS("tcga_data.RDS")
 
 ##assay data converted to dataframe
 mRNA_counts <- assay(tcga_data)
@@ -33,7 +35,7 @@ dim(filtered_mRNA) #liko 35117 genai
 
 ###############################################################################
 #splice with pheno
-pheno_final <- readRDS("C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-OV-mRNA data/mRNA and clinical data TCGA-OV/pheno_no_empty_data.RDS")
+pheno_final <- readRDS("pheno_no_empty_data.RDS")
 filtered_mRNA_t <- as.data.frame(t(filtered_mRNA))
 filtered_mRNA_t$barcode <- rownames(filtered_mRNA_t)
 tail(colnames(filtered_mRNA_t))
@@ -78,4 +80,4 @@ gtex_t$gtex <- "control"
 #dabar reikia prie kiekvieno geno stulpelio prideti naujas eilutes, zmones :rbind
 gtcga <- bind_rows(mRNA_full, gtex_t)
 dim(gtcga) #601(421 + 180) 35165(sutampa su mRNA_full+ gtex stulpelis)
-saveRDS(gtcga, "C:/Users/Ieva/Desktop/NVI GDL/R projetcs/tcga-ov-data/TCGA-OV-mRNA data/mRNA and clinical data TCGA-OV/joined_gtex_tcga.RDS")
+saveRDS(gtcga, "joined_gtex_tcga.RDS")

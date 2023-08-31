@@ -23,6 +23,8 @@ dependencies:
   - bioconductor-topGO=2.52.0
   - bioconductor-phantasus=1.20.2
   - bioconductor-GDCRNATools=1.20.0
+  - r-UCSCXenaTools
+  - r-dendextend
 #corlevelplot is not in conda
 
 
