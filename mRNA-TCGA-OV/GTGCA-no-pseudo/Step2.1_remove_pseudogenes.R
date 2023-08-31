@@ -49,7 +49,7 @@ dim(gtgca_names_sub) #liko 19766 genu is 34966
 table(gtgca_names_sub$gene_biotype, useNA = "a") #lieka 124 NA
 gtgca_names_sub <- gtgca_names_sub %>% drop_na(gene_biotype) #lieka 19642 genu
 
-# negaliu pakeisti gene names á rownames: non-unique values when setting 'row.names
+# negaliu pakeisti gene names ï¿½ rownames: non-unique values when setting 'row.names
 #todel grazinu transcriptu vardus
 rownames(gtgca_names_sub) <- gtgca_names_sub$ensembl
 repeating_genes <- c("", "5_8S_rRNA", "5S_rRNA", "7SK",
@@ -74,5 +74,5 @@ table(final_counts_w_names$gene_biotype, useNA = "a") #lieka 10925 transcriptu
 rownames(final_counts_w_names) <- final_counts_w_names$external_gene_name
 filtered_gtgca_counts <- final_counts_w_names[, -c(602:605)]
 saveRDS(filtered_gtgca_counts, "filtered_gtgca_counts.RDS") 
-
+#xx
 ################################################################################
