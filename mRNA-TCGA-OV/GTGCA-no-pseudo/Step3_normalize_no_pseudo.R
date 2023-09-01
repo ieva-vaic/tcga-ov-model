@@ -6,13 +6,12 @@ library(GDCRNATools)
 #get count matrix, rows as genes
 #working with full data!
 setwd("~/rprojects/TCGA-OV-data") #wsl
-gtcga <- readRDS("joined_gtex_tcga.RDS")
-counts_gtcga <- readRDS("filtered_gtgca_counts.RDS") #large numeric matrix with rows as genes
-coldata_gtcga <- readRDS("coldata_gtcga_full.RDS")
 
+#nuo cia nebekeiciu nieko
+counts_gtcga <- readRDS("gtcga_final_counts.RDS") #large numeric matrix with rows as genes
 ##############################################################################
 #OUTLIERS
-
+counts_gtcga <- data.matrix(counts_gtcga)
 # detect outlier genes with gsg
 gsg <- goodSamplesGenes(counts_gtcga) #no transpose, wgcna package
 summary(gsg) #weather there are outliers
@@ -50,6 +49,7 @@ mRNA_voom <- gdcVoomNormalization(counts = counts_gtcga, filter = FALSE) #
 mRNA_voomt <- t(mRNA_voom)
 
 saveRDS(mRNA_voom, "mrna_voom_no_pseudo.RDS")
+
 ###############################################################################
 #see normalization 
 htree_norm <- hclust(dist(mRNA_voomt), method = "average") #can take some time
@@ -60,5 +60,4 @@ pdf(file="figures/htree_no_pseudo_gtex_tcga_norm_red.pdf", height=80, width=100)
 plot(dend4) #dstant samples should be excluded #save portrait 20x66 inch pdf
 dev.off()
 #it is very bad, viskas idealiai atsiskyrę, su deseq irgi idealiai, o tcga nieko nepadaro lieka same kaip neclusterintas
-
 

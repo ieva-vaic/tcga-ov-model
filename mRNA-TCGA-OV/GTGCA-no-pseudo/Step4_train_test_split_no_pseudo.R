@@ -3,6 +3,7 @@ setwd("~/rprojects/TCGA-OV-data") #wsl
 library(tidyverse)
 gtcga_counts <- readRDS("mrna_voom_no_pseudo.RDS")
 gtcga_counts <- t(gtcga_counts)
+gtcga_counts <- as.data.frame(gtcga_counts)
 # Set (random-number-generator) seed so that results are consistent between runs
 set.seed(18) #choose favorite number
 train_ids <- rbinom(nrow(gtcga_counts), size = 1, prob = 0.8) ==1 #choose persentage
