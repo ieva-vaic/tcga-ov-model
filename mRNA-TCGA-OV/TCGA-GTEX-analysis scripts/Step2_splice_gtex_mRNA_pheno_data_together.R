@@ -120,3 +120,28 @@ saveRDS(gtgca_final, "gtcga_final_without_weird_genes_and_samples.RDS")
 #loose the gene descriptions now
 gtgca_final_no_names <- gtgca_final[, -c(1:2, 183:184, 606:608)] #37930   601
 saveRDS(gtgca_final_no_names, "gtcga_final_counts.RDS")
+
+
+
+################################################################################
+#only protein-coding names 
+gtcga_protein <- filter(gtcga_final_8less,  gtcga_final_8less$gene_biotype == "protein_coding")
+dim(gtcga_protein) #lieka 19197
+#idomu, kad xena tutoriale taip pat yra protein coding ju pateikiamoje lenteleje panasiai genu, t.y. 19116
+#find repeating names
+n_occur <- data.frame(table(gtcga_protein$Description))
+xx <- n_occur[n_occur$Freq > 1,]
+reaccuring_gtcga <- gtcga_protein[gtcga_protein$Description %in% n_occur$Var1[n_occur$Freq > 1],] 
+reaccuring_gtcga$Description #"C2orf61" "LYNX1" kartojas 2 kartus, mesiu lauk
+repeating_genes <- c("C2orf61" ,"LYNX1")
+gtcga_protein <- gtcga_protein[!(gtcga_protein$Description %in% n_occur$Var1[n_occur$Freq > 1]),] 
+rownames(gtcga_protein) <- gtcga_protein$Description
+
+gtcga_protein <- gtcga_protein[, -c(1:2, 183:184, 606:608)] #19193   601
+saveRDS(gtcga_protein, "gtcga_proteins.RDS")
+
+genesPC = fread("~/rprojects/XENA/zz_gene.protein.coding.csv")
+xena_proteins <- genesPC$Gene_Symbol
+biomart_proteins <- gtcga_protein$Description
+length(intersect(xena_proteins, biomart_proteins)) #18290 tiek pavadinimu sutampa tarp duombaziu
+

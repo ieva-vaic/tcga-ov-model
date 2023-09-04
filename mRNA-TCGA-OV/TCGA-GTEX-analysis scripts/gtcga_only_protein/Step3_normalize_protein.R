@@ -6,21 +6,11 @@ library(GDCRNATools)
 #get count matrix, rows as genes
 #working with full data!
 setwd("~/rprojects/TCGA-OV-data") #wsl
-gtcga <- readRDS("joined_gtex_tcga.RDS")
-# regain count data: genes in rows
-counts_gtcga <- gtcga[, 48:35165] #nusimažinu tik countus, bet dar liko gtex
-which( colnames(counts_gtcga)=="gtex" ) #35118 stulpelis
-counts_gtcga <- counts_gtcga[, -35118]
-#transpose!
-counts_gtcga <- t(counts_gtcga) #large numeric matrix with rows as genes
-#regain pheno/coldata
-which(colnames(gtcga)=="gtex" ) #35165 stulpelis
-coldata_gtcga <- gtcga[, c(1:47, 35165)]
-colnames(coldata_gtcga) #48
-saveRDS(coldata_gtcga, "coldata_gtcga_full.RDS")
+
+counts_gtcga <- readRDS("gtcga_proteins.RDS") #large numeric matrix with rows as genes
 ##############################################################################
 #OUTLIERS
-
+counts_gtcga <- data.matrix(counts_gtcga)
 # detect outlier genes with gsg
 gsg <- goodSamplesGenes(counts_gtcga) #no transpose, wgcna package
 summary(gsg) #weather there are outliers
@@ -34,40 +24,41 @@ table(gsg$goodSamples) #no outliers
 
 htree <- hclust(dist(t(counts_gtcga)), method = "average") #can take some time 
 
-pdf(file="figures/htree_full_gtex_tcga.pdf", height=30, width=60) #išsaugijimui didesniu formatu
+pdf(file="figures/htree_proteins_gtex_tcga.pdf", height=30, width=60) #išsaugijimui didesniu formatu
 plot(htree) #dstant samples should be excluded #save portrait 20x66 inch pdf
 dev.off()
+
+##probably pora zmoniu nusalint reiktu
 
 #add colors to hclust, (library dendextend)
 dend <- as.dendrogram(htree)
 col_aa_red <- ifelse(grepl("GTEX", labels(dend)), "red", "blue")
 dend2 <- assign_values_to_leaves_edgePar(dend=dend, value = col_aa_red, edgePar = "col") #
 
-pdf(file="figures/htree_full_gtex_tcga_red.pdf", height=80, width=100) #išsaugijimui didesniu formatu
+pdf(file="figures/htree_protein_gtex_tcga_red.pdf", height=80, width=100) #išsaugijimui didesniu formatu
 plot(dend2) #dstant samples should be excluded #save portrait 20x66 inch pdf
 dev.off()
 
-#
-#h <- heatmap(counts_gtcga, scale="column", col = cm.colors(256) )
+#I think TCGA−13−0760−01A−01R−1564−13 should be removed but later
 
 
 ###############################################################################
 # Normalize, I will use GDC RNA tools
 #1 type 2: from GDCRNAtools: gdcVoomNormalization: does TNB ir voom transformatio
-mRNA_voom <- gdcVoomNormalization(counts = counts_gtcga, filter = FALSE) #
+mRNA_voom <- gdcVoomNormalization(counts = counts_gtcga, filter = TRUE) #
 #pridedam normal vardus
 mRNA_voomt <- t(mRNA_voom)
 
-saveRDS(mRNA_voom, "mrna_voom.RDS")
+saveRDS(mRNA_voom, "mrna_voom_protein.RDS")
+
 ###############################################################################
 #see normalization 
 htree_norm <- hclust(dist(mRNA_voomt), method = "average") #can take some time
 dend3 <- as.dendrogram(htree_norm)
 col_aa_red <- ifelse(grepl("GTEX", labels(dend3)), "red", "blue")
 dend4 <- assign_values_to_leaves_edgePar(dend=dend3, value = col_aa_red, edgePar = "col") 
-pdf(file="figures/htree_full_gtex_tcga_norm_red.pdf", height=80, width=100) #išsaugijimui didesniu formatu
+pdf(file="figures/htree_no_pseudo_gtex_tcga_norm_red.pdf", height=80, width=100) #išsaugijimui didesniu formatu
 plot(dend4) #dstant samples should be excluded #save portrait 20x66 inch pdf
 dev.off()
 #it is very bad, viskas idealiai atsiskyrę, su deseq irgi idealiai, o tcga nieko nepadaro lieka same kaip neclusterintas
-
 

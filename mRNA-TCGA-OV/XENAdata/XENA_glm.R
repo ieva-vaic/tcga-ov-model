@@ -2,12 +2,9 @@
 library(glmnet)
 library(dendextend)
 #set dir to XENA
+setwd("~/rprojects/XENA")
 
 v <- readRDS("v.RDS") #iki glm
-v2 <- read.csv("01_voomExpr.csv") #po glm
-rownames(v2) <- v2$X
-v2 <- v2[, -1]
-
 v_counts <- v$E
 v_counts <- as.data.frame(v_counts)
 
@@ -47,5 +44,6 @@ res_coef_recoded_num = res_coef_recoded_num[res_coef_recoded_num[,1] != 0,]
 # remove first coefficient as this is the intercept, a variable of the model itself
 res_coef_recoded_num = res_coef_recoded_num[-1]
 relevant_genes_recoded_num = names(res_coef_recoded_num) # get names of the (non-zero) variables.
-relevant_genes_recoded_num # 120
+relevant_genes_recoded_num # 18
+
 
