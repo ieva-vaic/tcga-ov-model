@@ -1,5 +1,6 @@
 #cia prie mano jau geriau apjungto Gtex seto darau kitus normalizavimus ir paleiziu lasso
 library(GDCRNATools)
+library(glmnet)
 #get count matrix, rows as genes
 #working with full data!
 setwd("~/rprojects/TCGA-OV-data") #wsl
@@ -22,8 +23,8 @@ gtcga_counts2 <- as.data.frame(gtcga_counts2)
 set.seed(18) #choose favorite number
 train_ids <- rbinom(nrow(gtcga_counts2), size = 1, prob = 0.8) ==1 #choose persentage
 #we split clinical data first (probably should be indicated by y instead of x)
-gtex_counts_train2 = gtcga_counts2[train_ids, ] #new train data 107 35117 ->   494 14776
-gtex_counts_test2  = gtcga_counts2[!train_ids, ] #new test data 107 35117 -> 107 14776
+gtex_counts_train2 = gtcga_counts2[train_ids, ] #   494 14776
+gtex_counts_test2  = gtcga_counts2[!train_ids, ] # 107 14776
 
 #
 snames = rownames(gtex_counts_train2);
@@ -94,15 +95,15 @@ gtcga_counts3 <- t(voomExpr)
 gtcga_counts3 <- as.data.frame(gtcga_counts3)
 # Set (random-number-generator) seed so that results are consistent between runs
 set.seed(18) #choose favorite number
-train_ids <- rbinom(nrow(gtcga_counts2), size = 1, prob = 0.8) ==1 #choose persentage
+train_ids <- rbinom(nrow(gtcga_counts3), size = 1, prob = 0.8) ==1 #choose persentage   #cia klaida buvo!!!!
 #we split clinical data first (probably should be indicated by y instead of x)
 gtex_counts_train3 = gtcga_counts3[train_ids, ] #new train data ->   494 21894
 gtex_counts_test3  = gtcga_counts3[!train_ids, ] #new test data ->  107 21894
 
 ####
-gtex_counts_train3 <- t(gtex_counts_train3)
+gtex_counts_train3 <- data.matrix(gtex_counts_train3) #no need
 #model
-snames1 = rownames(gtex_counts_train3);
+snames1 = rownames(gtex_counts_train3); #cia beda
 group1 = substr(snames1, 1, 4); #Sets up level information for samples.
 group1 = as.factor(group1) #494
 res_num1 = cv.glmnet(
@@ -123,3 +124,89 @@ relevant_genes_recoded_num1 # 10
 
 intersect(relevant_genes_recoded_num, relevant_genes_recoded_num1)
 intersect(relevant_genes_recoded_num1, nefiltruotas)
+##############################################################################
+#GDC RNA tools, with filter, model added (issitraukus GDC RNA tools funkcija)
+
+counts <- counts_gtcga
+expr = DGEList(counts = counts)
+expr = calcNormFactors(expr)
+# #unfiltered
+# v_unfiltered <- voom(expr, design= model.matrix(~0 + group), plot = TRUE)$E
+
+#filtered
+keepALL <- rowSums(cpm(expr) > 1) >= 0.5*ncol(counts)
+nGenes <- as.numeric(summary(keepALL)[2]) + 
+  as.numeric(summary(keepALL)[3])
+nKeep <- summary(keepALL)[3]
+
+cat (paste('Total Number of genes: ', nGenes, '\n', sep=''))
+cat (paste('Number of genes for downstream analysis: ', nKeep, 
+           '\n', sep=''))
+
+exprALL <- expr[keepALL,,keep.lib.sizes = TRUE]
+v_filtered <- voom(exprALL, design= model.matrix(~0 + group), plot = TRUE)$E
+
+#split
+gtcga_counts4 <- t(v_filtered)
+gtcga_counts4 <- as.data.frame(gtcga_counts4)
+# Set (random-number-generator) seed so that results are consistent between runs
+set.seed(18) #choose favorite number
+train_ids <- rbinom(nrow(gtcga_counts4), size = 1, prob = 0.8) ==1 #choose persentage
+#we split clinical data first (probably should be indicated by y instead of x)
+gtex_counts_train4 = gtcga_counts4[train_ids, ] #new train data ->   494 14776
+gtex_counts_test4  = gtcga_counts4[!train_ids, ] #new test data ->  107 14776
+
+####
+gtex_counts_train4 <- data.matrix(gtex_counts_train4) #no need
+#model
+snames2 = rownames(gtex_counts_train4); #
+group2 = substr(snames2, 1, 4); #Sets up level information for samples.
+group2 = as.factor(group2) #494
+res_num2 = cv.glmnet(
+  x = gtex_counts_train4,
+  y = group2,
+  alpha = 1, 
+  family = "binomial"
+)
+res_num2
+
+res_coef_recoded_num2 = coef(res_num2, s="lambda.min") # the "coef" function returns a sparse matrix
+# get coefficients with non-zero values
+res_coef_recoded_num2 = res_coef_recoded_num2[res_coef_recoded_num2[,1] != 0,] 
+# remove first coefficient as this is the intercept, a variable of the model itself
+res_coef_recoded_num2 = res_coef_recoded_num2[-1]
+relevant_genes_recoded_num2 = names(res_coef_recoded_num2) # get names of the (non-zero) variables.
+relevant_genes_recoded_num2 # 12
+
+intersect(relevant_genes_recoded_num2, relevant_genes_recoded_num1)
+intersect(relevant_genes_recoded_num2, relevant_genes_recoded_num)
+intersect(relevant_genes_recoded_num2, nefiltruotas)
+
+##############################################################################
+#visu ju palyginimas
+
+#  GDC RNA tools, no filter
+GDCnofilter <- c("EVA1B" ,  "COQ8A" ,  "NICN1" ,  "ACAD11",  "CCDC39"  ,"ZBTB9"  , 
+                     "TOMM6" ,  "ILK"  ,   "EEF1G"   ,"TAX1BP3",
+                     "GABARAP", "WDR83OS" ,"MT-TP")
+
+# GDC RNA tools, with filter
+GDCfilter <- c( "TTC4" , "SLC39A1","RP5-1061H20.4","TMEM110", "RAD50","ZBTB9",     
+                    "NUDT3","RPS10","CLDN4","RNASEK", "GPS2","MT-TP")
+
+# XENA tut, with filter, model added
+GTEXdata_TutorialXENA <- c("EVA1B","NICN1","ACAD11","CCDC39","ZBTB9","TOMM6", 
+                         "EEF1G","TAX1BP3","WDR83OS","MT-TP" )
+
+#GDC RNA TOOLS, with filter, model added
+
+GDC_filt_model<- c("TTC4", "SLC39A1","RP5-1061H20.4", "TMEM110" , "RAD50", "ZBTB9",        
+                    "NUDT3","RPS10","CLDN4","RNASEK" ,"GPS2","MT-TP")
+
+#XENA
+XENA <- c("TPX2", "MISP", "FAM83D", "NEK2", "EPCAM", "KLK8","GLUL", "ABCA10", "FOXQ1", "CHMP4C", "TUBA1C",
+          "KLK7", "KSR2", "PNLIP", "FAM83H", "RABIF", "TCEAL3", "TMEM185B")
+gene_list <- list(GDC_filt_model = GDC_filt_model,GTEXdata_TutorialXENA= GTEXdata_TutorialXENA, 
+                  GDCfilter = GDCfilter,GDCnofilter= GDCnofilter, Xena = XENA)
+library(venn)
+venn(gene_list)
