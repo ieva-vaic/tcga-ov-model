@@ -8,6 +8,7 @@ This is recreation of chen 2022 protocol
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = '~/rprojects/XENA')
 library(UCSCXenaTools);
 library(data.table);
 library(R.utils);
@@ -147,7 +148,26 @@ names(filterTCGA02)
 Fisrt tutorialui nekeisiu, paliksiu limphatic invasion. po to pakeisiu i stage
 ```{r}
 #Keep variable "Lymphatic Invasion".
-varClinKeep = c("sampleID", "lymphaticinvasion", "clinicalstage", "vitalstatus", "ageatinitialpathologicdiagnosis", "neoplasmhistologicgrade" ); #cia yra ziauriai geruuu
+varClinKeep = c("sampleID", "lymphaticinvasion", "clinicalstage", "vitalstatus", "ageatinitialpathologicdiagnosis", "neoplasmhistologicgrade", 
+                "additionalpharmaceuticaltherapy", "additionalradiationtherapy",
+                "anatomicneoplasmsubdivision", "daystobirth", "daystocollection",
+                "daystodeath", "daystoinitialpathologicdiagnosis", "daystolastfollowup", 
+                "daystonewtumoreventadditionalsurgeryprocedure",
+                "daystonewtumoreventafterinitialtreatment",
+                "newneoplasmeventtype",
+                "easterncanceroncologygroup", 
+                "followupcasereportformsubmissionreason", "followuptreatmentsuccess", 
+                "historyofneoadjuvanttreatment", #only one yes
+                "intermediatedimension", "longestdimension", "shortestdimension", 
+                "newtumoreventadditionalsurgeryprocedure", #tik 7 yes
+                "newtumoreventafterinitialtreatment" , #"22no, 67 yes"
+                "personneoplasmcancerstatus", 
+                "postoperativerxtx",
+                "primarytherapyoutcomesuccess",
+                "radiationtherapy" ,
+                "residualtumor", #r0:15  r1:33   r2:5   rx:3
+                "sampletype", "tumorresidualdisease", "venousinvasion"
+                ); #cia yra ziauriai geruuu
 clinDF01 = as.data.frame(do.call(cbind, filterTCGA02));
 clinFinal = clinDF01[varClinKeep];
 #Identify observations/samples with no values assigned to the kept variables.
