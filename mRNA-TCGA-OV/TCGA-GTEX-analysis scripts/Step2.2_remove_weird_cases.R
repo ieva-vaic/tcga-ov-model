@@ -3,17 +3,16 @@ library(tidyverse)
 setwd("~/rprojects/TCGA-OV-data")
 #po to i prieki nukelt
 #splice with pheno
-pheno_final <- readRDS("pheno_no_empty_data.RDS")
-tcga_data <- readRDS("tcga_with_names.RDS")
-#kol kas man nereikia names filtravimui, tiesiog toks failas yra, skip if using no name data
-rownames(tcga_data) <- tcga_data$ensembl
-tcga_data <- tcga_data[, -c(430, 431, 432, 433)]
+pheno_final <- readRDS("joinedTCGA_XENA_clinical.RDS") #or use "pheno_no_empty_data.RDS"
+tcga_data <- readRDS("tcga_data.RDS")
+tcga_data <- assay(tcga_data)
+#
 tcga_counts_t <- t(tcga_data) #praradom colnames
 tcga_counts_t <- as.data.frame(tcga_counts_t) #non-numeric
 tcga_counts_t$barcode <- rownames(tcga_counts_t)
 
 tgca_pheno <- right_join(pheno_final, tcga_counts_t, by = "barcode")
-dim(tgca_pheno) #429 zmones ir 60510 (60464 genai + 47 clinical)
+dim(tgca_pheno) #429 zmones ir 60729 (60464 genai + 69 clinical)
 rownames(tgca_pheno) <- tgca_pheno$barcode
 
 ################################################################################
@@ -28,14 +27,22 @@ split_prior_treatment <- split(mRNA_full, f = mRNA_full$prior_treatment, drop = 
 mRNA_full <- split_prior_treatment$No #now the mRNA_full are good cases
 weird_cases <- rbind(weird_cases, split_prior_treatment$Yes) 
 
-dim(weird_cases) # 8 zmones nusišalina
-dim(mRNA_full) #421 lieka iš 429, so cheks out
-#saveRDS to pass on to add names
-saveRDS(mRNA_full, "tcga_no_weird.RDS")
+#dar zinokite noresiu ir 5 non serous cystadenocarnoma nusidropinti
+table(mRNA_full$primary_diagnosis, useNA="a")
+table(mRNA_full$icd_10_code, useNA="a")
 
-#get the names of the 8 removed, so I could filter the gtex later and not repeat everything
-weird_cases$barcode
-#i leave it like this, will be easier to just copy
-c("TCGA-13-0913-02A-01R-1564-13", "TCGA-13-1489-02A-01R-1565-13", "TCGA-29-1705-02A-01R-1567-13",
- "TCGA-29-1707-02A-01R-1567-13", "TCGA-29-1770-02A-01R-1567-13", "TCGA-29-2414-02A-01R-1569-13",
- "TCGA-61-2008-02A-01R-1568-13", "TCGA-61-1721-01A-01R-1569-13")
+split_non_serous <- split(mRNA_full, f = mRNA_full$icd_10_code, drop = T)
+mRNA_full <- split_non_serous$C56.9 #now the mRNA_full are good cases
+weird_cases <- rbind(weird_cases, split_non_serous$C48.1)
+weird_cases <- rbind(weird_cases, split_non_serous$C48.2) 
+
+dim(weird_cases) # 13 zmones nusišalina
+dim(mRNA_full) # 416 lieka iš 429, so cheks out
+#saveRDS to pass on to add names
+saveRDS(mRNA_full, "tcga_no_weird_full.RDS")
+
+pheno <- mRNA_full[, 1:70]
+tcga_data <- mRNA_full[, 70:60729]
+
+saveRDS(tcga_data, "tcga_no_weird_counts.RDS")
+saveRDS(pheno, "tcga_no_weird_pheno_XENA_TCGA.RDS")

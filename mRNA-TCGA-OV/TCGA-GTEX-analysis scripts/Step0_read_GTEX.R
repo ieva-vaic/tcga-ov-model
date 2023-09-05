@@ -1,5 +1,7 @@
+#STEP0 read GTEX file
 #this script will read the gtex to a managable data format
-#this is my home wls because it can tar gz files and also because conda!
+#this is my home wsl because it can tar gz files and also because conda!
+#will not work on work computer because can´t install phantasus
 library(phantasus)
 library(SummarizedExperiment)
 setwd("home/ieva/rprojects/TCGA-OV-data/GTEX")
