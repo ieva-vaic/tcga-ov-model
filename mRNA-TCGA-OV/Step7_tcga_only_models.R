@@ -17,6 +17,8 @@ pheno <- readRDS("tcga_no_weird_pheno_XENA_TCGA.RDS") #full clinical
 train_ids <- colnames(tcga_counts_train)
 pheno_train  = pheno[train_ids, ]  #336 samples
 
+saveRDS(pheno_train, "tcga_pheno_train.RDS")
+saveRDS(tcga_counts_train, "tcga_counts_train.RDS")
 #clean-up
 rm(pheno)
 rm(gtex_counts_train)
