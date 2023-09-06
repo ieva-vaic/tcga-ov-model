@@ -41,7 +41,7 @@ dim(mRNA_full) # 416 lieka iš 429, so cheks out
 #saveRDS to pass on to add names
 saveRDS(mRNA_full, "tcga_no_weird_full.RDS")
 
-pheno <- mRNA_full[, 1:70]
+pheno <- mRNA_full[, 1:69]
 tcga_data <- mRNA_full[, 70:60729]
 
 saveRDS(tcga_data, "tcga_no_weird_counts.RDS")

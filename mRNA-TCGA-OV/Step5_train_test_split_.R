@@ -8,9 +8,20 @@ gtcga_counts <- as.data.frame(gtcga_counts)
 set.seed(18) #choose favorite number
 train_ids <- rbinom(nrow(gtcga_counts), size = 1, prob = 0.8) ==1 #choose persentage
 #we split clinical data first (probably should be indicated by y instead of x)
-gtex_counts_train = gtcga_counts[train_ids, ] #494 13680
-gtex_counts_test  = gtcga_counts[!train_ids, ] #107 13680
+gtex_counts_train = gtcga_counts[train_ids, ] 
+gtex_counts_test  = gtcga_counts[!train_ids, ] 
 
-#add clinical data -> no change to clinical data 
+dim(gtex_counts_train) #489 13680
+dim(gtex_counts_test) #106 13680
+
+snames_train = rownames(gtex_counts_train);
+group_train = as.factor(substr(snames_train, 1, 4))
+summary(group_train) #153gtex  336tcga
+
+snames_test = rownames(gtex_counts_test);
+group_train = as.factor(substr(snames_test, 1, 4))
+summary(group_train) #27gtex   79 tcga
+
+#save
 saveRDS(gtex_counts_train, "train_gtcga_normcounts_prot.RDS")
 saveRDS(gtex_counts_test, "test_gtcga_normcounts_prot.RDS")
