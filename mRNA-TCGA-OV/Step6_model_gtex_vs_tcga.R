@@ -30,3 +30,4 @@ res_coef_gtex_names
 # "TTC4"    "SLC39A1" "TMEM110" "RAD50"   "ANKHD1"  "ZBTB9"   "RPS10"   "CLDN4"   "PFDN5"   "PAGR1"  
 # "RNASEK"  "GPS2"    "RTEL1" 
 ################################################################################
+

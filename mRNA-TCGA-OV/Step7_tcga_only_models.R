@@ -39,7 +39,7 @@ grade_glm = cv.glmnet(
   alpha = 1, 
   family = "binomial"
 )
-grade_glm # 37 #db43
+grade_glm # 37 #db43 #db 25
 grade_coef= coef(grade_glm, s="lambda.min") # the "coef" function returns a sparse matrix
 grade_coef = grade_coef[grade_coef[,1] != 0,] 
 grade_coef = grade_coef[-1]

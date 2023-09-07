@@ -3,6 +3,7 @@ setwd("~/rprojects/TCGA-OV-data") #wsl
 library(WGCNA)
 library(gridExtra)
 library(ggplot2)
+library(CorLevelPlot)
 allowWGCNAThreads() 
 
 tcga_counts <- readRDS("tcga_counts_train.RDS")
@@ -88,7 +89,7 @@ plotDendroAndColors(bwnet$dendrograms[[1]], cbind(bwnet$unmergedColors, bwnet$co
 # create traits file - binarize categorical variables
 traits <- pheno_train %>% 
   mutate(vital_status_bin = ifelse(grepl('Dead', vital_status), 1, 0)) %>% 
-  dplyr::select(71) #select the new colum, after the last one
+  dplyr::select(70) #select the new colum, after the last one
 
 pheno_train$figo_stage_f = gsub("[ABC]$", "", pheno_train$figo_stage)
 table(pheno_train$figo_stage_f, useNA = "a") #stage na =2
@@ -126,7 +127,7 @@ heatmap.data <- heatmap.data %>%
 
 
 CorLevelPlot(heatmap.data,
-             x = names(heatmap.data)[113:116], #CLINICAL
+             x = names(heatmap.data)[113:119], #CLINICAL
              y = names(heatmap.data)[1:112], #"COLORS"
              col = c("blue1", "skyblue", "white", "pink", "red"))
 #maybe open separately 20X45inch portrait as there are a 101 eigengenes :)
@@ -134,12 +135,12 @@ CorLevelPlot(heatmap.data,
 
 module.gene.mapping <- as.data.frame(bwnet$colors) #modules stored as colors
 
-mgmGRADE <- module.gene.mapping %>% 
-  filter(`bwnet$colors` == "greenyellow") %>% 
+mgmstage <- module.gene.mapping %>% 
+  filter(`bwnet$colors` == "blue") %>% 
   rownames() #filtruosim genus kurie yra musu norimos "spalvos" 
 
-mgmSTAGE4 <- module.gene.mapping %>% 
-  filter(`bwnet$colors` == 'thistle4') %>% 
+mgm_grade <- module.gene.mapping %>% 
+  filter(`bwnet$colors` == 'greenyellow') %>% 
   rownames() #filtruosim genus kurie yra musu norimos "spalvos" 
 
 #Identifying driver genes
@@ -174,3 +175,25 @@ ensembl.ids.stage <- gene.signf.corr.pvals.stage %>%
 ensembl.ids.stage
 
 intersect(ensembl.ids.stage, mgmSTAGE4) #none
+
+########################
+mgmstage
+stge_counts <- tcga_counts[colnames(tcga_counts) %in% mgmstage]
+
+pheno_train$figo_stage
+pheno_train$stage_num <- gsub("[ABC]$", "", pheno_train$figo_stage)
+table(pheno_train$stage_num, useNA = "a") #stage na =2
+pheno_train$stage_num[pheno_train$stage_num =="Stage I"] <- NA
+
+stage <- pheno_train[pheno_train$stage_num %in% c("Stage II", "Stage III", "Stage IV"), ]
+#na trukdys]
+stage_counts <- stge_counts[ (rownames(stge_counts) %in% rownames(stage)), ]
+stage_counts <- data.matrix(t(stage_counts))
+grade_factor <- stage$stage_num
+stage_glm = cv.glmnet(
+  x = stage_counts,
+  y = grade_factor,
+  alpha = 1, 
+  family = "gaussian"
+)
+stage_glm #1 #does not work finish tomorow
