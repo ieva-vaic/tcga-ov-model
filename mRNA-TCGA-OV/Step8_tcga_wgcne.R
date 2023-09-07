@@ -2,6 +2,7 @@
 setwd("~/rprojects/TCGA-OV-data") #wsl
 library(WGCNA)
 library(gridExtra)
+library(ggplot2)
 allowWGCNAThreads() 
 
 tcga_counts <- readRDS("tcga_counts_train.RDS")
@@ -62,3 +63,114 @@ bwnet <- blockwiseModules(tcga_counts,
 saveRDS(bwnet, "bwnet.mRNA.TCGA-OV.RDS") 
 #a save is necessary because bwnet can run for hours and then quit because of memory issues
 cor <- temp_cor #sugražinam
+
+# 5. Module Eigengenes ---------------------------------------------------------
+module_eigengenes <- bwnet$MEs #MEs yra module egenges
+
+
+# Print out a preview
+head(module_eigengenes) #clusters are colors
+
+
+# get number of genes for each module
+table(bwnet$colors) 
+
+# Plot the dendrogram and the module colors before and after merging underneath
+plotDendroAndColors(bwnet$dendrograms[[1]], cbind(bwnet$unmergedColors, bwnet$colors),
+                    c("unmerged", "merged"),
+                    dendroLabels = FALSE,
+                    addGuide = TRUE,
+                    hang= 0.03,
+                    guideHang = 0.05)
+
+
+#traits 
+# create traits file - binarize categorical variables
+traits <- pheno_train %>% 
+  mutate(vital_status_bin = ifelse(grepl('Dead', vital_status), 1, 0)) %>% 
+  dplyr::select(71) #select the new colum, after the last one
+
+pheno_train$figo_stage_f = gsub("[ABC]$", "", pheno_train$figo_stage)
+table(pheno_train$figo_stage_f, useNA = "a") #stage na =2
+pheno_train$figo_stage_f[pheno_train$figo_stage_f =="Stage I"] <- NA
+#for figo stage, padaryti palyginimą tarp visų galimų stadijų
+severity.out <- binarizeCategoricalColumns(pheno_train$figo_stage_f,
+                                           includePairwise = TRUE,
+                                           includeLevelVsAll = TRUE,
+                                           minCount = 1)
+traits <- cbind(traits, severity.out)
+
+pheno_train$neoplasmhistologicgrade_F = pheno_train$neoplasmhistologicgrade
+table(pheno_train$neoplasmhistologicgrade_F, useNA = "a") #i want g2 vs G3
+pheno_train$neoplasmhistologicgrade_F[pheno_train$neoplasmhistologicgrade_F %in% c("G4", "GB", "GX")] <- NA
+severity.out2 <- binarizeCategoricalColumns(pheno_train$neoplasmhistologicgrade_F,
+                                           includePairwise = TRUE,
+                                           includeLevelVsAll = F,
+                                           minCount = 1)
+traits <- cbind(traits, severity.out2)
+
+# Define numbers of genes and samples
+nSamples <- nrow(tcga_counts)
+nGenes <- ncol(tcga_counts)
+#find corelation between eigengenes
+module.trait.corr <- cor(module_eigengenes, traits, use = 'p') #pearson cor between eigengenes and traits
+module.trait.corr.pvals <- corPvalueStudent(module.trait.corr, nSamples) #cor p values
+
+
+heatmap.data <- merge(module_eigengenes, traits, by = 'row.names') #combine  to data frame
+
+colnames(heatmap.data)
+
+heatmap.data <- heatmap.data %>% 
+  column_to_rownames(var = 'Row.names') #first colum negali buti numeric todel convertuojam i rownames
+
+
+CorLevelPlot(heatmap.data,
+             x = names(heatmap.data)[113:116], #CLINICAL
+             y = names(heatmap.data)[1:112], #"COLORS"
+             col = c("blue1", "skyblue", "white", "pink", "red"))
+#maybe open separately 20X45inch portrait as there are a 101 eigengenes :)
+#significance denoted by *
+
+module.gene.mapping <- as.data.frame(bwnet$colors) #modules stored as colors
+
+mgmGRADE <- module.gene.mapping %>% 
+  filter(`bwnet$colors` == "greenyellow") %>% 
+  rownames() #filtruosim genus kurie yra musu norimos "spalvos" 
+
+mgmSTAGE4 <- module.gene.mapping %>% 
+  filter(`bwnet$colors` == 'thistle4') %>% 
+  rownames() #filtruosim genus kurie yra musu norimos "spalvos" 
+
+#Identifying driver genes
+module.membership.measure <- cor(module_eigengenes, tcga_counts, use = 'p')
+module.membership.measure.pvals <- corPvalueStudent(module.membership.measure, nSamples)
+
+#grade
+gene.signf.corr.grade <- cor(tcga_counts, traits$data.G3.vs.G2, use = 'p')
+gene.signf.corr.pvals.grade <- corPvalueStudent(gene.signf.corr.grade, nSamples)
+ensembl.ids.grade <- gene.signf.corr.pvals.grade %>% 
+  as.data.frame() %>% 
+  arrange(V1) %>% 
+  head(25) %>% 
+  rownames()
+ensembl.ids.grade
+
+
+grade_glm <- relevant_genes_grade #is step7
+intersect(ensembl.ids.grade, relevant_genes_grade) #12 intersect
+#"MX2" "MTMR11" "SPRED3" "LNPK" "SGCB" "PCDHB4" "KNL1" "LGR4" "CEP152" "RBMS1" "KLK14" "TMX4" "SUV39H1"
+#okay why do all the fancy clustering jei po to tiesiog top genes nusifiltruoji neatsizvelgiant?
+intersect(ensembl.ids.grade, mgmGRADE) #"MX2"  "OAS3" "OASL"
+
+#stage
+gene.signf.corr.stage <- cor(tcga_counts, traits$`data.Stage IV.vs.all`, use = 'p')
+gene.signf.corr.pvals.stage <- corPvalueStudent(gene.signf.corr.stage, nSamples)
+ensembl.ids.stage <- gene.signf.corr.pvals.stage %>% 
+  as.data.frame() %>% 
+  arrange(V1) %>% 
+  head(25) %>% 
+  rownames()
+ensembl.ids.stage
+
+intersect(ensembl.ids.stage, mgmSTAGE4) #none

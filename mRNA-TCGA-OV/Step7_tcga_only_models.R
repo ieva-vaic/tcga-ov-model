@@ -33,14 +33,13 @@ table(grade$neoplasmhistologicgrade, useNA = "a") #bus 36 G2 vs 291 G3
 grade_counts <- tcga_counts_train[, (colnames(tcga_counts_train) %in% rownames(grade))]
 grade_counts <- data.matrix(t(grade_counts))
 grade_factor <- grade$neoplasmhistologicgrade
-
 grade_glm = cv.glmnet(
   x = grade_counts,
   y = grade_factor,
   alpha = 1, 
   family = "binomial"
 )
-grade_glm # 37
+grade_glm # 37 #db43
 grade_coef= coef(grade_glm, s="lambda.min") # the "coef" function returns a sparse matrix
 grade_coef = grade_coef[grade_coef[,1] != 0,] 
 grade_coef = grade_coef[-1]
@@ -61,14 +60,14 @@ stage_glm = cv.glmnet(
   alpha = 1, 
   family = "gaussian"
 )
-stage_glm #13
+stage_glm #1
 stage_coef= coef(stage_glm, s="lambda.min") # the "coef" function returns a sparse matrix
 stage_coef = stage_coef[stage_coef[,1] != 0,] 
 stage_coef = stage_coef[-1]
 relevant_genes_stage= names(stage_coef) # get names of the (non-zero) variables.
-relevant_genes_stage 
+relevant_genes_stage  #PRKRA
 
-intersect(relevant_genes_grade, relevant_genes_stage) #0 witch makes sense
+intersect(relevant_genes_grade, relevant_genes_stage) #0 witch makes sense #
 
 ###vital_status
 table(pheno_train$vital_status, useNA="a") #lyginisu 208 dead 127 alive 
@@ -81,9 +80,9 @@ vital_glm = cv.glmnet(
   alpha = 1, 
   family = "binomial"
 )
-vital_glm # 1? really?
+vital_glm # 0? really?
 vital_coef= coef(vital_glm, s="lambda.min") # the "coef" function returns a sparse matrix
 vital_coef = vital_coef[vital_coef[,1] != 0,] 
 vital_coef = vital_coef[-1]
 relevant_genes_vital= names(vital_coef) # get names of the (non-zero) variables.
-relevant_genes_vital #PPL
+relevant_genes_vital # pries tai buvo 1 gene PPL..
