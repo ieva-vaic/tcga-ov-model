@@ -15,10 +15,10 @@ group = as.factor(group)
 res_gtex = cv.glmnet(
   x = gtex_counts_train,
   y = group,
-  alpha = 1,
+  alpha = 0.5,
   family = "binomial"
 )
-res_gtex #atrenka 13
+res_gtex #atrenka 221
 # Getting genes that contribute for the prediction
 res_coef_gtex = coef(res_gtex, s="lambda.min") # the "coef" function returns a sparse matrix
 head(res_coef_gtex) # in a sparse matrix the "." represents the value of zero
@@ -31,3 +31,4 @@ res_coef_gtex_names
 # "RNASEK"  "GPS2"    "RTEL1" 
 ################################################################################
 
+saveRDS(res_coef_gtex_names, "gtcga_elastic.RDS")
