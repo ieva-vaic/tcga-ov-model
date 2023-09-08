@@ -2,8 +2,11 @@
 setwd("~/rprojects/TCGA-OV-data") #wsl
 library(WGCNA)
 library(gridExtra)
+library(glmnet)
 library(ggplot2)
 library(CorLevelPlot)
+library(venn)
+library(tidyverse)
 allowWGCNAThreads() 
 
 tcga_counts <- readRDS("tcga_counts_train.RDS")
@@ -178,7 +181,7 @@ intersect(ensembl.ids.stage, mgmSTAGE4) #none
 
 ########################
 mgmstage
-stge_counts <- tcga_counts[colnames(tcga_counts) %in% mgmstage]
+stage_counts <- tcga_counts[colnames(tcga_counts) %in% mgmstage]
 
 pheno_train$figo_stage
 pheno_train$stage_num <- gsub("[ABC]$", "", pheno_train$figo_stage)
@@ -186,14 +189,38 @@ table(pheno_train$stage_num, useNA = "a") #stage na =2
 pheno_train$stage_num[pheno_train$stage_num =="Stage I"] <- NA
 
 stage <- pheno_train[pheno_train$stage_num %in% c("Stage II", "Stage III", "Stage IV"), ]
-#na trukdys]
-stage_counts <- stge_counts[ (rownames(stge_counts) %in% rownames(stage)), ]
-stage_counts <- data.matrix(t(stage_counts))
-grade_factor <- stage$stage_num
+dim(stage) #lieka 334 zmones
+#na trukdys
+stage_counts <- stage_counts[ (rownames(stage_counts) %in% rownames(stage)), ]
+stage_counts <- data.matrix(stage_counts)
+dim(stage_counts)
+grade_factor <- recode(stage$stage_num, "Stage II" = -1, "Stage III" = 0, "Stage IV" = 1)
 stage_glm = cv.glmnet(
   x = stage_counts,
   y = grade_factor,
   alpha = 1, 
   family = "gaussian"
 )
-stage_glm #1 #does not work finish tomorow
+stage_glm #21 
+stage_coef= coef(stage_glm, s="lambda.min") # the "coef" function returns a sparse matrix
+stage_coef = stage_coef[stage_coef[,1] != 0,] 
+stage_coef = stage_coef[-1]
+relevant_genes_stage= names(stage_coef) # get names of the (non-zero) variables.
+relevant_genes_stage  #
+
+stage_genes_no_cluster <- c("GRHL3"  ,  "NRDC"  ,   "TMEM59"  , "CREG1" ,  
+                            "SLC1A4"  , "PRADC1"  , "PDK1"   ,  "PRKRA"   ,
+                            "CREB1",   "RAB43" ,   "TRIM59"  , "KLHL8"  ,
+                            "HIST1H1E" ,"SBDS" ,    "TSPAN12" , "OSTF1" , 
+                            "MAPKAP1" , "RASGEF1A","LGR4" ,    "TMEM123" , 
+                            "PDGFD" ,   "BACE1" ,   "LRMP" ,    "ABHD4" , 
+                            "ZNF821" ,  "SRR" ,     "PPP4R1" , "C18orf32",
+                            "ZNF236" ,  "CTDP1" ,   "SLC44A2" , "CEBPG" , 
+                            "CNFN",     "SULT2B1",  "RDH13" ,   "TRIB3"  ,
+                            "FAM210B" , "PCBP3" ,   "ZNF74" ,   "SLC10A3",
+                            "MT-ND5" )
+intersect(stage_genes_no_cluster, relevant_genes_stage)
+stage_intersect_list <- list(cluster_blue =relevant_genes_stage, no_clustering= stage_genes_no_cluster )
+venn(stage_intersect_list)
+
+#same with 
