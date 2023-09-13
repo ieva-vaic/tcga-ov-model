@@ -102,3 +102,14 @@ tcga %>% select(vital_genes) %>%
     axis.text.x = element_text(face = "italic", angle = 90))+
   guides(fill=guide_legend(title="Study"))
 
+############################################################################
+#heatmap between TCGA and GTEX
+library(RColorBrewer)
+gene.matrix <- as.matrix(gtex_counts_train[1:13680])
+dim(gene.matrix)
+# Example: grouping from the first letter:
+my_group <- as.numeric(as.factor(gtex_counts_train$grupe))
+colSide <- brewer.pal(9, "Set1")[my_group]
+
+heatmap(gene.matrix, Colv = NA, Rowv = NA, scale="row" , RowSideColors=colSide)
+#man looks weird ar tbh

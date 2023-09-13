@@ -16,7 +16,7 @@ gtex_genes <- readRDS("gtcga_elastic.RDS")
 gtex_filtered_counts_train <- gtex_counts_train[colnames(gtex_counts_train) %in% gtex_genes] 
 
 gtex_filtered_counts_train2 <- as.data.frame(t(gtex_filtered_counts_train))
-gtex_filtered_counts_train2 = gtex_filtered_counts_train2 %>% select(starts_with("TCGA")) 
+gtex_filtered_counts_train2 <- gtex_filtered_counts_train2 %>%  dplyr::select(starts_with("TCGA")) 
 #336 samples #221 genes
 
 #clinical data
@@ -106,11 +106,12 @@ res <- RegParallel(
   nestedParallel = FALSE,
   conflevel = 95)
 res <- res[!is.na(res$P),]
-res <- res %>% arrange(P)
+res_stat_signf <- res %>% arrange(P) %>% filter(P<0.05)
+View(res_stat_signf)
 
-
+write.csv(res_stat_signf$Term, "res_stat_signf1.csv")
 ##############################################################################
-#top3 i viena modeli?
+#top6 i viena modeli?
 fit_COX = coxph(Surv(overall_survival, deceased) ~ GRB7+PPT2+TPM3+VPS33B+LUC7L2+PKP3, data=clin_df_joined)
 fit_COX # p=4.656e-06 TIK TPM3 IR GRB7 PATIKIMI
 
@@ -181,7 +182,8 @@ y2 <- clin_df_joined2[ ,c(8,7)]
 names(y2) <- c("time", "status")
 y2 <- as.matrix(y2)
 head(y2)
-surv_counts <- clin_df_joined2[, 11:237]
+surv_counts <- clin_df_joined2[, 11:231]
+
 
 cox_fitx <- glmnet(surv_counts, y2, family="cox", maxit = 1000)
 cox_fitx
@@ -192,8 +194,16 @@ head(coef_x)
 coef_x = coef_x[coef_x[,1] != 0,] 
 res_coef_cox_names = names(coef_x) # get names of the (non-zero) variables.
 res_coef_cox_names #35
+#write.csv(res_coef_cox_names, "res_coef_cox_names.csv")
 
 lasoo <- c("TTC4",    "SLC39A1", "TMEM110", "RAD50",   "ANKHD1",  "ZBTB9",
-           "RPS10" ,  "CLDN4",   "PFDN5",   "PAGR1" , "RNASEK," ,"GPS2" ,   "RTEL1" )
+           "RPS10" , "CLDN4",   "PFDN5", "PAGR1" , "RNASEK," ,"GPS2" ,"RTEL1")
 
 intersect(lasoo, res_coef_cox_names)
+
+###############################################################################
+#i want a df with colums: time, censor, genes exp
+rownames(clin_df_joined2) <- clin_df_joined2$barcode
+surv_df <- clin_df_joined2[, c(8, 232, 11:231)]
+surv_df <- surv_df %>% rename(censor = decesed2, surv_time = overall_survival)
+write.csv(surv_df, "top_glm_for_surv.csv")
