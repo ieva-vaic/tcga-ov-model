@@ -1,4 +1,4 @@
-#Step 1.2: clean pheno data
+#Step 2.1: clean pheno data
 library(tidyverse)
 setwd("~/rprojects/TCGA-OV-data")
 pheno <- readRDS("pheno.RDS")
@@ -24,7 +24,7 @@ treatments_dataframe <- treatments_dataframe[ ,!names(treatments_dataframe) %in%
 #here I drop the rows where the treatment was not given (indicated by no/na in treatment_or_therapy)
 table(treatments_dataframe$treatment_or_therapy, useNA='a') #429 yes kiti no ar na, todel bandau nufiltruot tik yes
 had_treatment <- subset(treatments_dataframe, treatment_or_therapy == 'yes') #new treatments dataframe
-table(had_treatment$patient_names, useNA='a') #this showes that some are double
+table(had_treatment$patient_names, useNA='a') #this showed that some are double
 had_treatment$patient <- had_treatment$patient_names #add patient names for easy merging
 #paste treatment types to have 1 row per person
 had_treatment <- had_treatment %>% group_by(patient_names) %>% mutate(undergone_treatments=paste(sort(treatment_type), collapse="_"))   #galutinej eilutej treatment eiga
@@ -64,4 +64,4 @@ joined_clin <- left_join(pheno_final2, XENAclin, by = "sample.aux" ) #nepamirst 
 saveRDS(joined_clin, "joinedTCGA_XENA_clinical.RDS")
 table(joined_clin$figo_stage, useNA="a")
 table(joined_clin$clinicalstage, useNA="a")
-justIDS <- joined_clin[, c(1:6, 69, 33)]
+justIDS <- joined_clin[, c(1:6, 33)]

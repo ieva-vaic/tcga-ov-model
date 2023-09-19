@@ -1,4 +1,4 @@
-#Step 5, model gtex vs tcga
+#Step 6, model gtex vs tcga
 setwd("~/rprojects/TCGA-OV-data") #wsl
 library(glmnet)
 library(tidyverse)

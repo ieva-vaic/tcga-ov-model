@@ -1,4 +1,4 @@
-#Step4 Train/test split
+#Step5 Train/test split
 setwd("~/rprojects/TCGA-OV-data") #wsl
 library(tidyverse)
 gtcga_counts <- readRDS("mrna_voom_protein.RDS")

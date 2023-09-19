@@ -1,3 +1,4 @@
+#Step2.3 change all gene names 
 #I want my count matrix to have gene names instead of ENSG 
 library(tidyverse)
 library(biomaRt)
@@ -12,6 +13,7 @@ str(mRNA_counts) #60660 genes
 
 #get gene names in the count df
 mRNA_counts$ensembl <- rownames(mRNA_counts)
+
 mRNA_counts$ensembl_gene_id <- gsub("\\..*", "",mRNA_counts$ensembl)
 length(mRNA_counts$ensembl_gene_id) # 60660 
 
@@ -32,10 +34,10 @@ dim(tcga_genes) #60419 = 241 pamesta
 #prisijoinsiu dfs
 counts_tcga_with_gene_names <- left_join(mRNA_counts, tcga_genes, by= "ensembl_gene_id")
 dim(counts_tcga_with_gene_names) #60660   420
-
+saveRDS(counts_tcga_with_gene_names, "tcga_with_names_all.RDS")
 #pasalinti na, jei genas neturi vardo greiciausiai vistiek jo nenoriu tirt
-counts_tcga_with_gene_names_sub <- counts_tcga_with_gene_names %>% drop_na(external_gene_name)
-dim(counts_tcga_with_gene_names_sub) #60463   420
+#counts_tcga_with_gene_names_sub <- counts_tcga_with_gene_names %>% drop_na(external_gene_name)
+#dim(counts_tcga_with_gene_names_sub) #60463   420
 
 #del pasikartojanciu vardu negaliu uzdeti ant rownames genu pavadinimu, so save
 saveRDS(counts_tcga_with_gene_names_sub, "tcga_with_names.RDS")

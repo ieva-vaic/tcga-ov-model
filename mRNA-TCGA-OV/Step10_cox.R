@@ -17,6 +17,7 @@ gtex_filtered_counts_train <- gtex_counts_train[colnames(gtex_counts_train) %in%
 
 gtex_filtered_counts_train2 <- as.data.frame(t(gtex_filtered_counts_train))
 gtex_filtered_counts_train2 <- gtex_filtered_counts_train2 %>%  dplyr::select(starts_with("TCGA")) 
+dim(gtex_filtered_counts_train2)
 #336 samples #221 genes
 
 #clinical data
@@ -101,14 +102,14 @@ res <- RegParallel(
           singular.ok = TRUE),
   FUNtype = 'coxph',
   variables = colnames(clin_df_joined)[11:ncol(clin_df_joined)],
-  blocksize = 221,
+  blocksize = 219,
   cores = 2,
   nestedParallel = FALSE,
   conflevel = 95)
 res <- res[!is.na(res$P),]
 res_stat_signf <- res %>% arrange(P) %>% filter(P<0.05)
 View(res_stat_signf)
-
+write.csv(res_stat_signf, "figures/res_stat_signf_df.csv")
 write.csv(res_stat_signf$Term, "res_stat_signf1.csv")
 ##############################################################################
 #top6 i viena modeli?
@@ -117,54 +118,55 @@ fit_COX # p=4.656e-06 TIK TPM3 IR GRB7 PATIKIMI
 
 ###############################################################################
 #CUTE PLOTS THAT MEAN SOMETHING?
+clin_df_joined2 <- clin_df_joined
 #GRB7
-median_value_GRB7 = median(clin_df_joined$GRB7)
+median_value_GRB7 = median(clin_df_joined2$GRB7)
 print(median_value_GRB7)
-clin_df_joined$GRB7_f= ifelse(clin_df_joined$GRB7 >= median_value_GRB7, "UP", "DOWN")
-fit_GRB7 = survfit(Surv(overall_survival, deceased) ~ GRB7_f, data=clin_df_joined)
-pval_GRB7 = surv_pvalue(fit_GRB7, data=clin_df_joined)$pval
+clin_df_joined2$GRB7_f= ifelse(clin_df_joined2$GRB7 >= median_value_GRB7, "UP", "DOWN")
+fit_GRB7 = survfit(Surv(overall_survival, deceased) ~ GRB7_f, data=clin_df_joined2)
+pval_GRB7 = surv_pvalue(fit_GRB7, data=clin_df_joined2)$pval
 print(pval_GRB7) 
-GRB7 <- ggsurvplot(fit_GRB7, data=clin_df_joined, pval=T, risk.table=T, title=paste("GRB7"))
+GRB7 <- ggsurvplot(fit_GRB7, data=clin_df_joined2, pval=T, risk.table=T, title=paste("GRB7"))
 #PPT2
-median_value_PPT2 = median(clin_df_joined$PPT2)
+median_value_PPT2 = median(clin_df_joined2$PPT2)
 print(median_value_PPT2)
-clin_df_joined$PPT2_f= ifelse(clin_df_joined$PPT2 >= median_value_PPT2, "UP", "DOWN")
-fit_PPT2 = survfit(Surv(overall_survival, deceased) ~ PPT2_f, data=clin_df_joined)
-pval_PPT2 = surv_pvalue(fit_PPT2, data=clin_df_joined)$pval
+clin_df_joined2$PPT2_f= ifelse(clin_df_joined2$PPT2 >= median_value_PPT2, "UP", "DOWN")
+fit_PPT2 = survfit(Surv(overall_survival, deceased) ~ PPT2_f, data=clin_df_joined2)
+pval_PPT2 = surv_pvalue(fit_PPT2, data=clin_df_joined2)$pval
 print(pval_PPT2) 
-PPT2 <- ggsurvplot(fit_PPT2, data=clin_df_joined, pval=T, risk.table=T, title=paste("PPT2"))
+PPT2 <- ggsurvplot(fit_PPT2, data=clin_df_joined2, pval=T, risk.table=T, title=paste("PPT2"))
 #TPM3
-median_value_TPM3 = median(clin_df_joined$TPM3)
+median_value_TPM3 = median(clin_df_joined2$TPM3)
 print(median_value_TPM3)
-clin_df_joined$TPM3_f= ifelse(clin_df_joined$TPM3 >= median_value_TPM3, "UP", "DOWN")
-fit_TPM3 = survfit(Surv(overall_survival, deceased) ~ TPM3_f, data=clin_df_joined)
-pval_TPM3 = surv_pvalue(fit_TPM3, data=clin_df_joined)$pval
+clin_df_joined2$TPM3_f= ifelse(clin_df_joined2$TPM3 >= median_value_TPM3, "UP", "DOWN")
+fit_TPM3 = survfit(Surv(overall_survival, deceased) ~ TPM3_f, data=clin_df_joined2)
+pval_TPM3 = surv_pvalue(fit_TPM3, data=clin_df_joined2)$pval
 print(pval_TPM3) 
-TPM3 <- ggsurvplot(fit_TPM3, data=clin_df_joined, pval=T, risk.table=T, title=paste("TPM3"))
+TPM3 <- ggsurvplot(fit_TPM3, data=clin_df_joined2, pval=T, risk.table=T, title=paste("TPM3"))
 #VPS33B
-median_value_VPS33B = median(clin_df_joined$VPS33B)
+median_value_VPS33B = median(clin_df_joined2$VPS33B)
 print(median_value_VPS33B)
-clin_df_joined$VPS33B_f= ifelse(clin_df_joined$VPS33B >= median_value_VPS33B, "UP", "DOWN")
-fit_VPS33B = survfit(Surv(overall_survival, deceased) ~ VPS33B_f, data=clin_df_joined)
-pval_VPS33B = surv_pvalue(fit_VPS33B, data=clin_df_joined)$pval
+clin_df_joined2$VPS33B_f= ifelse(clin_df_joined2$VPS33B >= median_value_VPS33B, "UP", "DOWN")
+fit_VPS33B = survfit(Surv(overall_survival, deceased) ~ VPS33B_f, data=clin_df_joined2)
+pval_VPS33B = surv_pvalue(fit_VPS33B, data=clin_df_joined2)$pval
 print(pval_VPS33B) 
-VPS33B <- ggsurvplot(fit_VPS33B, data=clin_df_joined, pval=T, risk.table=T, title=paste("VPS33B"))
+VPS33B <- ggsurvplot(fit_VPS33B, data=clin_df_joined2, pval=T, risk.table=T, title=paste("VPS33B"))
 #LUC7L2
-median_value_LUC7L2 = median(clin_df_joined$LUC7L2)
+median_value_LUC7L2 = median(clin_df_joined2$LUC7L2)
 print(median_value_LUC7L2)
-clin_df_joined$LUC7L2_f= ifelse(clin_df_joined$LUC7L2 >= median_value_LUC7L2, "UP", "DOWN")
-fit_LUC7L2 = survfit(Surv(overall_survival, deceased) ~ LUC7L2_f, data=clin_df_joined)
-pval_LUC7L2 = surv_pvalue(fit_LUC7L2, data=clin_df_joined)$pval
+clin_df_joined2$LUC7L2_f= ifelse(clin_df_joined2$LUC7L2 >= median_value_LUC7L2, "UP", "DOWN")
+fit_LUC7L2 = survfit(Surv(overall_survival, deceased) ~ LUC7L2_f, data=clin_df_joined2)
+pval_LUC7L2 = surv_pvalue(fit_LUC7L2, data=clin_df_joined2)$pval
 print(pval_LUC7L2) 
-LUC7L2 <- ggsurvplot(fit_LUC7L2, data=clin_df_joined, pval=T, risk.table=T, title=paste("LUC7L2"))
+LUC7L2 <- ggsurvplot(fit_LUC7L2, data=clin_df_joined2, pval=T, risk.table=T, title=paste("LUC7L2"))
 #PKP3
-median_value_PKP3 = median(clin_df_joined$PKP3)
+median_value_PKP3 = median(clin_df_joined2$PKP3)
 print(median_value_PKP3)
-clin_df_joined$PKP3_f= ifelse(clin_df_joined$PKP3 >= median_value_PKP3, "UP", "DOWN")
-fit_PKP3 = survfit(Surv(overall_survival, deceased) ~ PKP3_f, data=clin_df_joined)
-pval_PKP3 = surv_pvalue(fit_PKP3, data=clin_df_joined)$pval
+clin_df_joined2$PKP3_f= ifelse(clin_df_joined2$PKP3 >= median_value_PKP3, "UP", "DOWN")
+fit_PKP3 = survfit(Surv(overall_survival, deceased) ~ PKP3_f, data=clin_df_joined2)
+pval_PKP3 = surv_pvalue(fit_PKP3, data=clin_df_joined2)$pval
 print(pval_PKP3) 
-PKP3 <- ggsurvplot(fit_PKP3, data=clin_df_joined, pval=T, risk.table=T, title=paste("PKP3"))
+PKP3 <- ggsurvplot(fit_PKP3, data=clin_df_joined2, pval=T, risk.table=T, title=paste("PKP3"))
 
 list_of_plots <- list(GRB7, PPT2, TPM3, VPS33B, LUC7L2, PKP3)
 jpeg(file="figures/kaplanstop6.jpeg",
@@ -182,7 +184,7 @@ y2 <- clin_df_joined2[ ,c(8,7)]
 names(y2) <- c("time", "status")
 y2 <- as.matrix(y2)
 head(y2)
-surv_counts <- clin_df_joined2[, 11:231]
+surv_counts <- clin_df_joined2[, 11:228]
 
 
 cox_fitx <- glmnet(surv_counts, y2, family="cox", maxit = 1000)
@@ -193,8 +195,8 @@ head(coef_x)
 
 coef_x = coef_x[coef_x[,1] != 0,] 
 res_coef_cox_names = names(coef_x) # get names of the (non-zero) variables.
-res_coef_cox_names #35
-#write.csv(res_coef_cox_names, "res_coef_cox_names.csv")
+res_coef_cox_names #38
+write.csv(res_coef_cox_names, "res_coef_coxnet_names.csv")
 
 lasoo <- c("TTC4",    "SLC39A1", "TMEM110", "RAD50",   "ANKHD1",  "ZBTB9",
            "RPS10" , "CLDN4",   "PFDN5", "PAGR1" , "RNASEK," ,"GPS2" ,"RTEL1")
@@ -204,6 +206,6 @@ intersect(lasoo, res_coef_cox_names)
 ###############################################################################
 #i want a df with colums: time, censor, genes exp
 rownames(clin_df_joined2) <- clin_df_joined2$barcode
-surv_df <- clin_df_joined2[, c(8, 232, 11:231)]
+surv_df <- clin_df_joined2[, c(8, 230, 11:229)]
 surv_df <- surv_df %>% rename(censor = decesed2, surv_time = overall_survival)
 write.csv(surv_df, "top_glm_for_surv.csv")

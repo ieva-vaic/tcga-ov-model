@@ -10,7 +10,7 @@ library(DESeq2)
 #working with full data!
 setwd("~/rprojects/TCGA-OV-data") #wsl
 
-counts_gtcga <- readRDS("gtcga_final_counts.RDS") #large numeric df with rows as genes
+counts_gtcga <- readRDS("gtcga_final_counts2.RDS") #large numeric df with rows as genes
 ##############################################################################
 #OUTLIERS
 counts_gtcga <- data.matrix(counts_gtcga) #19193   596
@@ -27,7 +27,7 @@ table(gsg$goodSamples) #no outliers
 
 htree <- hclust(dist(t(counts_gtcga)), method = "average") #can take some time 
 
-pdf(file="figures/htree_proteins_gtex_tcga.pdf", height=30, width=60) #išsaugijimui didesniu formatu
+png(file="figures/htree_proteins_gtex_tcga2.png", height=3000, width=6000) #išsaugijimui didesniu formatu
 plot(htree) #dstant samples should be excluded #save portrait 20x66 inch pdf
 dev.off()
 
@@ -42,7 +42,7 @@ dend <- as.dendrogram(htree)
 col_aa_red <- ifelse(grepl("GTEX", labels(dend)), "red", "blue")
 dend2 <- assign_values_to_leaves_edgePar(dend=dend, value = col_aa_red, edgePar = "col") #
 
-pdf(file="figures/htree_protein_gtex_tcga_red.pdf", height=80, width=100) #išsaugijimui didesniu formatu
+png(file="figures/htree_protein_gtex_tcga_red.png", height=500, width=3000) #išsaugijimui didesniu formatu
 plot(dend2) #dstant samples should be excluded #save portrait 20x66 inch pdf
 dev.off()
 ###############################################################################
@@ -79,7 +79,7 @@ htree_norm <- hclust(dist(mRNA_voomt), method = "average") #can take some time
 dend3 <- as.dendrogram(htree_norm)
 col_aa_red <- ifelse(grepl("GTEX", labels(dend3)), "red", "blue")
 dend4 <- assign_values_to_leaves_edgePar(dend=dend3, value = col_aa_red, edgePar = "col") 
-pdf(file="figures/htree_protein_gtex_tcga_norm_red.pdf", height=80, width=100) #išsaugijimui didesniu formatu
+png(file="figures/htree_protein_gtex_tcga_norm_red.png", height=500, width=3000) #išsaugijimui didesniu formatu
 plot(dend4) #dstant samples should be excluded #save portrait 20x66 inch pdf
 dev.off()
 #atsiskyre bet oh well

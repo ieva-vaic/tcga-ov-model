@@ -111,5 +111,23 @@ dim(gene.matrix)
 my_group <- as.numeric(as.factor(gtex_counts_train$grupe))
 colSide <- brewer.pal(9, "Set1")[my_group]
 
-heatmap(gene.matrix, Colv = NA, Rowv = NA, scale="row" , RowSideColors=colSide)
-#man looks weird ar tbh
+jpeg(file="figures/heatmap2.jpeg", height=2000, width=3000) #išsaugijimui didesniu formatu
+heatmap(gene.matrix, Colv = NA, Rowv = NA, scale="col", col=rev(brewer.pal(9,"RdBu")), RowSideColors=colSide)
+dev.off()
+#man looks weird ar tbh, no difrerences
+elastic.genes <- readRDS("gtcga_elastic.RDS")
+#only the elastic net genes ~200
+elastic.matrix <- gene.matrix[, (colnames(gene.matrix) %in% elastic.genes)]
+dim(elastic.matrix)
+jpeg(file="figures/heatmap_elastic.jpeg", height=2000, width=3000) #išsaugijimui didesniu formatu
+heatmap(elastic.matrix, Colv = NA, scale="col", col=rev(brewer.pal(9,"RdBu")), RowSideColors=colSide)
+dev.off()
+#only the coxnet genes ~35
+coxnet.genes <- read_csv("res_coef_cox_names.csv")
+coxnet.genes <- coxnet.genes$x
+coxnet.genes
+coxnet.matrix <- gene.matrix[, (colnames(gene.matrix) %in% coxnet.genes)]
+dim(coxnet.matrix) #489  33 -> 2 pamesti bes reikejo keist vardus vienas FAM83H_AS1 kitas PPT2_f
+jpeg(file="figures/heatmap_coxnet.jpeg", height=700, width=700) #išsaugijimui didesniu formatu
+heatmap(coxnet.matrix, Colv = NA, scale="col", col=rev(brewer.pal(9,"RdBu")), RowSideColors=colSide)
+dev.off()

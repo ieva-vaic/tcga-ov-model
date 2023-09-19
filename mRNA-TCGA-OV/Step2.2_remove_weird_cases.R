@@ -1,5 +1,6 @@
-#Step 1.0 remove weird people from tcga
+#Step 2.2.0 remove weird people from tcga
 library(tidyverse)
+library(SummarizedExperiment)
 setwd("~/rprojects/TCGA-OV-data")
 #po to i prieki nukelt
 #splice with pheno

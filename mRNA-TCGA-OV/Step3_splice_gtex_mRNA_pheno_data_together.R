@@ -1,4 +1,4 @@
-#Step 2: splice gtex and TCGA-OV mRNA counts together
+#Step 3: splice gtex and TCGA-OV mRNA counts together
 library(tidyverse)
 setwd("~/rprojects/TCGA-OV-data")
 gtex_counts <- readRDS("GTEX/gtex_counts.RDS")
@@ -6,6 +6,7 @@ gtex_counts <- readRDS("GTEX/gtex_counts.RDS")
 #the gtex is now a matrix that looks like this:
 #rows: ENSEMBLIDS (transcipt level), all 56200 of them 
 head(colnames(gtex_counts))
+dim(gtex_counts)
 #name: ENSEMBL IDS
 #Description: real names 
 #gtex_counts[3:181] #is case names 
@@ -13,7 +14,8 @@ head(colnames(gtex_counts))
 #make a numeric dataframe from gtex
 gtex_df <- as.data.frame(gtex_counts)
 #read in tcga counts with names data for mRNA 
-tcga_counts <- readRDS("tcga_with_names.RDS") ####
+#tcga_counts <- readRDS("tcga_with_names.RDS") #nusalinti bevardziai pagal biomart
+tcga_counts <- readRDS("tcga_with_names_all.RDS") ####
 
 #get how many gene names match between gtex and tcga
 tcga_names <- tcga_counts$external_gene_name
@@ -61,6 +63,7 @@ ENTG_YG <- gtex_df[grepl('_PAR_Y', gtex_df$Name), ]
 ENTG_YG_names <- ENTG_YG$Name #turbut tie patys bet anyways
 gtex_counts_filt <- gtex_df[!(gtex_df$Name %in% ENTG_YG_names), ]
 rownames(gtex_counts_filt) <- gtex_counts_filt$ensembl_gene_id #veik rownames 
+dim(gtex_counts_filt) #lieka  60419   420
 #join!
 gtcga <- left_join(gtex_counts_filt, tcga_counts_filt, by = "ensembl_gene_id")
 dim(gtcga) #56156   603
@@ -78,18 +81,29 @@ dim(gtgca_protein) #liko 19197 genu is 55469
 table(gtgca_protein$gene_biotype, useNA = "a") 
 ################################################################################
 #find repeating names
-n_occur <- data.frame(table(gtgca_protein$Description))
-xx <- n_occur[n_occur$Freq > 1,] #LYNX1 ir C2orf61 pasikartoja dvigubai
+#Siaip noreciau kad butu vardai ne gtex kurie mostly sinomimai visokie,
+#bet hugo vardai is biomarto. Taciau beda bus del nesutampanciu ir tusciu
+gtgca_protein["external_gene_name.y"][gtgca_protein["external_gene_name.y"] == ''] <- NA
+any(is.na(gtgca_protein$external_gene_name.y))
+gtgca_protein <- gtgca_protein %>% 
+  mutate(external_gene_name.y = coalesce(external_gene_name.y, Description))  
+any(is.na(gtgca_protein$external_gene_name.y))
+#liko pataisyti NPIPA9
+which(gtgca_protein$external_gene_name.y == 'NPIPA9')
+gtgca_protein[13803, 602] <- NA
+gtgca_protein[13807, 602] <- NA
+gtgca_protein <- gtgca_protein %>% 
+  mutate(external_gene_name.y = coalesce(external_gene_name.y, Description))  
+any(is.na(gtgca_protein$external_gene_name.y))
 
-gtgca_final <- gtgca_protein[!(gtgca_protein$Description %in% n_occur$Var1[n_occur$Freq > 1]),] 
-rownames(gtgca_final) <- gtgca_final$Description
+rownames(gtgca_protein) <- gtgca_protein$external_gene_name.y
 
 #SAVE!
-saveRDS(gtgca_final, "gtcga_final_protein_w_names.RDS")
+saveRDS(gtgca_protein, "gtcga_final_protein_w_biomart_names.RDS")
 
 #loose the gene descriptions now
-gtgca_final_no_names <- gtgca_final[, -c(1:2, 183:184, 601:603)] #37930   601
-saveRDS(gtgca_final_no_names, "gtcga_final_counts.RDS")
+gtgca_final_no_names <- gtgca_protein[, -c(1:2, 183:184, 601:603)] #37930   601
+saveRDS(gtgca_final_no_names, "gtcga_final_counts2.RDS")
 
 
 
