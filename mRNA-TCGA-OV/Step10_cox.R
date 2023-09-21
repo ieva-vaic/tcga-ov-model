@@ -198,11 +198,6 @@ res_coef_cox_names = names(coef_x) # get names of the (non-zero) variables.
 res_coef_cox_names #38
 write.csv(res_coef_cox_names, "res_coef_coxnet_names.csv")
 
-lasoo <- c("TTC4",    "SLC39A1", "TMEM110", "RAD50",   "ANKHD1",  "ZBTB9",
-           "RPS10" , "CLDN4",   "PFDN5", "PAGR1" , "RNASEK," ,"GPS2" ,"RTEL1")
-
-intersect(lasoo, res_coef_cox_names)
-
 ###############################################################################
 #i want a df with colums: time, censor, genes exp
 rownames(clin_df_joined2) <- clin_df_joined2$barcode

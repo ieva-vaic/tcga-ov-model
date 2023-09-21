@@ -6,19 +6,13 @@ setwd("~/rprojects/TCGA-OV-data") #wsl
 library(tidyverse)
 library(RColorBrewer)
 library('DESeq2')
+library(pROC)
 #because the normalized hplot was bad this might not be the most appropirate?
 gtex_counts_train <- readRDS("train_gtcga_normcounts_prot.RDS")
 gtex_counts_train <- data.frame(gtex_counts_train)
 gtex_counts_train$grupe <- substr(rownames(gtex_counts_train), 1, 4)
 gtex_counts_train$grupe <- as.factor(gtex_counts_train$grupe)
-gtex_counts_train %>% 
-  ggplot(aes(x=grupe, y=TTC4, fill=grupe))+
-  geom_boxplot()+
-  scale_fill_viridis(discrete = TRUE, alpha=0.6) +
-  geom_jitter(color="black", size=0.4, alpha=0.9) +
-  xlab("Study")+
-  ylab(substitute(paste(italic("TTC4"))))
- 
+#PICTURE FOR MY GENES
  mano_genes <- c( "PPP2R1A" ,"ARID1A", "CTNNB1", "FBXW7",  "NOTCH1" ,"NOTCH2", "NOTCH3" ,  "NOTCH4"  ,
                           "HES1"  ,"JAG2" , "DLL1",  "HOPX" , "grupe")
  gtex_counts_train %>% select(mano_genes) %>%
@@ -30,67 +24,66 @@ gtex_counts_train %>%
      axis.text.x = element_text(face = "italic"))+
    guides(fill=guide_legend(title="Study"))
 
- pheno_train <- readRDS("tcga_pheno_train.RDS")
- tcga_counts_train <- readRDS("tcga_counts_train.RDS")
- tcga_counts_train <- as.data.frame(t(tcga_counts_train))
- tcga_counts_train$barcode <- rownames(tcga_counts_train)
- tcga <- right_join(pheno_train, tcga_counts_train, by = "barcode")
- tcga$grade <- tcga$neoplasmhistologicgrade
- tcga$grade[tcga$grade %in% c("G4", "GB", "GX")] <- NA 
-grade_genes <- c( "MTMR11" ,  "CERS2"  ,  "RNF144A",  "RBMS1"  ,  "LNPK"  , 
-                  "SGCB"   ,  "ENC1"   ,  "PCDHB4" ,  "TNFRSF21" ,"PGM3"   ,  
-                  "LGR4"  ,   "KNL1" ,    "CEP152" ,  "ZNF592" ,  "SHCBP1"  , 
-                  "SPRED3" ,  "RASIP1" ,  "ALDH16A1" ,"KLK14"   , "TMX4"   , 
-                  "MX2", 
+pheno_train <- readRDS("tcga_pheno_train.RDS")
+tcga_counts_train <- readRDS("tcga_counts_train.RDS")
+tcga_counts_train <- as.data.frame(t(tcga_counts_train))
+tcga_counts_train$barcode <- rownames(tcga_counts_train)
+tcga <- right_join(pheno_train, tcga_counts_train, by = "barcode")
+#PICRTURE FOR GRADE
+tcga$grade <- tcga$neoplasmhistologicgrade
+tcga$grade[tcga$grade %in% c("G4", "GB", "GX")] <- NA 
+grade_glm_genes <- readRDS("tcga_grade_45.RDS") 
+grade_genes <- c( grade_glm_genes,
                   "grade") #i need to add group so that it will be sorted
-
 tcga %>% select(grade_genes) %>%
-  na.omit()%>%
-  pivot_longer(., cols = c(grade_genes[1:21]), names_to = "Genes", values_to = "EXPR") %>%
+  na.omit() %>%
+  pivot_longer(., cols = c(grade_genes[1:45]), names_to = "Genes", values_to = "EXPR") %>%
   ggplot(aes(x = Genes, y = EXPR, fill = grade)) +
   geom_boxplot()+
   ylab("Normalized expression")+
   theme(
     axis.text.x = element_text(face = "italic", angle = 90))+
   guides(fill=guide_legend(title="Study"))
-
+#PICTURE FOR STAGE THAT ONE GENE
 table(tcga$clinicalstage2, useNA = "a")
 tcga$clinicalstage2[tcga$clinicalstage2 =="Stage I"] <- NA
 tcga$stage <- tcga$clinicalstage2
-stage_genes <- c( "GRHL3"  ,  "NRDC"  ,   "TMEM59"  , "CREG1" ,   "SLC1A4"  ,
-                  "PRADC1"  , "PDK1"   ,  "PRKRA"   , "CREB1",   "RAB43" ,   
-                  "TRIM59"  , "KLHL8"  ,  "HIST1H1E" ,"SBDS" ,    "TSPAN12" , 
-                  "OSTF1" ,   "MAPKAP1" , "RASGEF1A","LGR4" ,    "TMEM123" ,
-                  "PDGFD" ,   "BACE1" ,   "LRMP" ,    "ABHD4" ,   "ZNF821" , 
-                  "SRR" ,     "PPP4R1" , "C18orf32", "ZNF236" ,  "CTDP1" ,  
-                  "SLC44A2" , "CEBPG" ,   "CNFN",     "SULT2B1",  "RDH13" ,  
-                  "TRIB3"  , "FAM210B" , "PCBP3" ,   "ZNF74" ,   "SLC10A3",  
-                  "MT-ND5"  ,
+stage_genes <- c( "PRKRA",
                   "stage") #i need to add group so that it will be sorted
-
 tcga %>% select(stage_genes) %>%
   na.omit()%>%
-  pivot_longer(., cols = c(stage_genes[1:41]), names_to = "Genes", values_to = "EXPR") %>%
-  ggplot(aes(x = Genes, y = EXPR, fill = stage)) +
+  ggplot(aes(x=stage, y=PRKRA, fill=stage))+
+  geom_boxplot()+
+  scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+  geom_jitter(color="black", size=0.4, alpha=0.9) +
+  xlab("Stage")+
+  ylab(substitute(paste(italic("PRKRA"))))
+#PICTRUE FOR LYPHOVASCULAR INVASION
+table(tcga$lymphaticinvasion, useNA = "a")
+lumph_genes <- c( "MILR1", "VAV1",  "PLCB4", "VSIG4",
+                  "lymphaticinvasion") #i need to add group so that it will be sorted
+tcga %>% select(lumph_genes) %>%
+  na.omit() %>%
+  pivot_longer(., cols = c(lumph_genes[1:4]), names_to = "Genes", values_to = "EXPR") %>%
+  ggplot(aes(x = Genes, y = EXPR, fill = as.factor(lymphaticinvasion))) +
   geom_boxplot()+
   ylab("Normalized expression")+
   theme(
     axis.text.x = element_text(face = "italic", angle = 90))+
-  guides(fill=guide_legend(title="Study"))
-
-
-vital_genes <- c("CD38",  "FAM3C", "PDGFD", "FANCI", "PPL",   "IL34", 
-                 "vital_status")
-tcga %>% select(vital_genes) %>%
-  na.omit()%>%
-  pivot_longer(., cols = c(vital_genes[1:6]), names_to = "Genes", values_to = "EXPR") %>%
-  ggplot(aes(x = Genes, y = EXPR, fill = vital_status)) +
+  guides(fill=guide_legend(title="lypmhovascular invasion"))
+#PICTRUE FOR residual disease left or not
+table(tcga$tumorresidualdisease, useNA = "a")
+res_dis_genes <- readRDS("tcga_resdis_13.RDS")
+res_dis_genes <- c(res_dis_genes, "tumorresidualdisease")
+tcga %>% select(res_dis_genes) %>%
+  na.omit() %>%
+  pivot_longer(., cols = c(res_dis_genes[1:13]), names_to = "Genes", values_to = "EXPR") %>%
+  ggplot(aes(x = Genes, y = EXPR, fill = as.factor(tumorresidualdisease))) +
   geom_boxplot()+
   ylab("Normalized expression")+
   theme(
     axis.text.x = element_text(face = "italic", angle = 90))+
-  guides(fill=guide_legend(title="Study"))
-
+  guides(fill=guide_legend(title="tumorresidualdisease"))
 ############################################################################
 #heatmap between TCGA and GTEX
 gene.matrix <- as.matrix(gtex_counts_train[1:13680])
@@ -218,3 +211,128 @@ gtex_counts_train %>% select(suvROCgenes) %>%
   theme(
     axis.text.x = element_text(face = "italic", angle=-90))+
   guides(fill=guide_legend(title="Study"))
+###############################################################################
+#Tiesiog ROC (ne SURV ROC) bet TCGA vs GTEX ar atspėja genų raiška grupę?
+#tutorialas is statquest https://github.com/StatQuest/roc_and_auc_demo/blob/master/roc_and_auc_demo.R
+cox_counts <- gtex_counts_train %>% select(res_coef_cox_names)
+glm.fit=glm(grupe ~ RAD50, family=binomial, data= cox_counts)
+roc(cox_counts$grupe, glm.fit$fitted.values, plot=TRUE, 
+    legacy.axes=TRUE, percent=TRUE, xlab="False Positive Percentage",
+    ylab="True Postive Percentage", col="#377eb8", lwd=4)
+roc.info <- roc(cox_counts$grupe, glm.fit$fitted.values, legacy.axes=TRUE)
+str(roc.info)
+roc.df <- data.frame(
+  tpp=roc.info$sensitivities*100, ## tpp = true positive percentage
+  fpp=(1 - roc.info$specificities)*100, ## fpp = false positive precentage
+  thresholds=roc.info$thresholds)
+head(roc.df) ## head() will show us the values for the upper right-hand corner
+## of the ROC graph, when the threshold is so low 
+## (negative infinity) that every single sample is called "obese".
+## Thus TPP = 100% and FPP = 100%
+
+tail(roc.df) ## tail() will show us the values for the lower left-hand corner
+## of the ROC graph, when the threshold is so high (infinity) 
+## that every single sample is called "not obese". 
+## Thus, TPP = 0% and FPP = 0%
+
+## We can calculate the area under the curve...
+roc(cox_counts$grupe, glm.fit$fitted.values, plot=TRUE, legacy.axes=TRUE, percent=TRUE,
+    xlab="False Positive Percentage", ylab="True Postive Percentage",
+    col="#377eb8", lwd=4, print.auc=TRUE, main="RAD50")
+## ...and the partial area under the curve.
+roc(cox_counts$grupe, glm.fit$fitted.values, 
+    plot=TRUE, legacy.axes=TRUE, percent=TRUE,
+    xlab="False Positive Percentage", ylab="True Postive Percentage",
+    col="#377eb8", lwd=4, print.auc=TRUE, print.auc.x=45,
+    partial.auc=c(100, 90), auc.polygon = TRUE,
+    auc.polygon.col = "#377eb822")
+## ROC for random forest
+library(randomForest) 
+rf.model <- randomForest(factor(cox_counts$grupe) ~ cox_counts$RAD50)
+roc(cox_counts$grupe, rf.model$votes[,1], plot=TRUE,
+    legacy.axes=TRUE, percent=TRUE,
+    xlab="False Positive Percentage", 
+    ylab="True Postive Percentage",
+    col="#4daf4a", lwd=4, print.auc=TRUE)
+
+#############################################################################
+#all gene ROCs, tutorial:https://github.com/cardiomoon/multipleROC
+library(multipleROC)
+a=multipleROC(group~RAD50,data=cox_counts)
+b=multipleROC(group~TTC4,data=cox_counts)
+c=multipleROC(group~RPS10,data=cox_counts)
+d=multipleROC(group~CLDN4,data=cox_counts)
+e=multipleROC(group~ARPC1B,data=cox_counts)
+f=multipleROC(group~PKP3,data=cox_counts)
+g=multipleROC(group~GRB7,data=cox_counts)
+plot_ROC(list(a,b,c,d,e,f,g),show.eta=FALSE,show.sens=FALSE)
+plot_ROC(list(a,b,c,d,e,f,g))+facet_grid(no~.)
+###############################################################################
+#Top ~35 genai su klinikiniais
+#nuo virsaus pradedant
+#grade
+grade_genes38 <- c( res_coef_cox_names,
+                  "grade") #i need to add group so that it will be sorted
+tcga %>% select(grade_genes38) %>%
+  na.omit() %>%
+  pivot_longer(., cols = c(res_coef_cox_names[1:38]), names_to = "Genes", values_to = "EXPR") %>%
+  ggplot(aes(x = Genes, y = EXPR, fill = grade)) +
+  geom_boxplot()+
+  ylab("Normalized expression")+
+  theme(
+    axis.text.x = element_text(face = "italic", angle = 90))+
+  guides(fill=guide_legend(title="GRADE"))
+grade_genes7 <- c( "RAD50", "TTC4", "RPS10", "CLDN4", "ARPC1B", "PKP3", "GRB7",
+                    "grade") #i need to add group so that it will be sorted
+tcga %>% select(grade_genes7) %>%
+  na.omit() %>%
+  pivot_longer(., cols = c(grade_genes7[1:7]), names_to = "Genes", values_to = "EXPR") %>%
+  ggplot(aes(x = Genes, y = EXPR, fill = grade)) +
+  geom_boxplot()+
+  ylab("Normalized expression")+
+  theme(
+    axis.text.x = element_text(face = "italic", angle = 90))+
+  guides(fill=guide_legend(title="GRADE"))
+#stage
+stage_genes38 <- c( res_coef_cox_names,
+                    "stage") #i need to add group so that it will be sorted
+tcga %>% select(stage_genes38) %>%
+  na.omit() %>%
+  pivot_longer(., cols = c(stage_genes38[1:38]), names_to = "Genes", values_to = "EXPR") %>%
+  ggplot(aes(x = Genes, y = EXPR, fill = stage)) +
+  geom_boxplot()+
+  ylab("Normalized expression")+
+  theme(
+    axis.text.x = element_text(face = "italic", angle = 90))+
+  guides(fill=guide_legend(title="STAGE"))
+stage_genes7 <- c( "RAD50", "TTC4", "RPS10", "CLDN4", "ARPC1B", "PKP3", "GRB7",
+                   "stage") #i need to add group so that it will be sorted
+tcga %>% select(stage_genes7) %>%
+  na.omit() %>%
+  pivot_longer(., cols = c(stage_genes7[1:7]), names_to = "Genes", values_to = "EXPR") %>%
+  ggplot(aes(x = Genes, y = EXPR, fill = stage)) +
+  geom_boxplot()+
+  ylab("Normalized expression")+
+  theme(
+    axis.text.x = element_text(face = "italic", angle = 90))+
+  guides(fill=guide_legend(title="STAGE"))
+###############################################################################
+library(ComplexHeatmap)
+top_genes38_mat <- tcga %>% select(c(res_coef_cox_names, "patient.x")) 
+rownames(top_genes38_mat) <- top_genes38_mat$patient.x
+top_genes38_mat <-  top_genes38_mat[, -39]
+top_genes38_mat <- data.matrix(top_genes38_mat)
+Heatmap(top_genes38_mat)
+
+top_genes38_mat2 <- gtex_counts_train %>% select(res_coef_cox_names) 
+top_genes38_mat2 <- data.matrix(top_genes38_mat2)
+Heatmap(top_genes38_mat2)
+
+top_genes7_mat <- gtex_counts_train %>% 
+  select(c("RAD50", "TTC4", "RPS10", "CLDN4", "ARPC1B", "PKP3", "GRB7")) 
+rownames(top_genes7_mat) <- top_genes7_mat$patient.x
+top_genes7_mat <-  top_genes7_mat[, -8]
+top_genes7_mat <- data.matrix(top_genes7_mat)
+Heatmap(top_genes7_mat)
+row_ha = rowAnnotation(study = gtex_counts_train$grupe)
+Heatmap(top_genes7_mat, right_annotation = row_ha)
