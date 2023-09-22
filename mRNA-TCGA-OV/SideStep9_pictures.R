@@ -7,6 +7,8 @@ library(tidyverse)
 library(RColorBrewer)
 library('DESeq2')
 library(pROC)
+library(ComplexHeatmap)
+library(circlize)
 #because the normalized hplot was bad this might not be the most appropirate?
 gtex_counts_train <- readRDS("train_gtcga_normcounts_prot.RDS")
 gtex_counts_train <- data.frame(gtex_counts_train)
@@ -92,7 +94,7 @@ dim(gene.matrix)
 my_group <- as.numeric(as.factor(gtex_counts_train$grupe))
 colSide <- brewer.pal(9, "Set1")[my_group]
 
-jpeg(file="figures/heatmap2.jpeg", height=2000, width=3000) #išsaugijimui didesniu formatu
+jpeg(file="figures/heatmap15.jpeg", height=2000, width=5000) #išsaugijimui didesniu formatu
 heatmap(gene.matrix, Colv = NA, Rowv = NA, scale="col", col=rev(brewer.pal(9,"RdBu")), RowSideColors=colSide)
 dev.off()
 #man looks weird ar tbh, no difrerences
@@ -317,7 +319,7 @@ tcga %>% select(stage_genes7) %>%
     axis.text.x = element_text(face = "italic", angle = 90))+
   guides(fill=guide_legend(title="STAGE"))
 ###############################################################################
-library(ComplexHeatmap)
+#complex heatmaps
 top_genes38_mat <- tcga %>% select(c(res_coef_cox_names, "patient.x")) 
 rownames(top_genes38_mat) <- top_genes38_mat$patient.x
 top_genes38_mat <-  top_genes38_mat[, -39]
@@ -328,11 +330,29 @@ top_genes38_mat2 <- gtex_counts_train %>% select(res_coef_cox_names)
 top_genes38_mat2 <- data.matrix(top_genes38_mat2)
 Heatmap(top_genes38_mat2)
 
+#small heatmap with clinical
 top_genes7_mat <- gtex_counts_train %>% 
   select(c("RAD50", "TTC4", "RPS10", "CLDN4", "ARPC1B", "PKP3", "GRB7")) 
-rownames(top_genes7_mat) <- top_genes7_mat$patient.x
+top_genes7_mat$barcode <- rownames(top_genes7_mat)
+top_genes7_mat_clin <- left_join(top_genes7_mat, tcga, by="barcode") 
+rownames(top_genes7_mat_clin) <- top_genes7_mat_clin$barcode
+top_genes7_mat_clin <- top_genes7_mat_clin %>% 
+  select(c("RAD50.x", "TTC4.x", "RPS10.x", "CLDN4.x", "ARPC1B.x", "PKP3.x", "GRB7.x",
+           "neoplasmhistologicgrade", 
+           "figo_stage", "prior_treatment", "age_at_diagnosis", "treatment_or_therapy",
+           "lymphaticinvasion", "vitalstatus", "newneoplasmeventtype", 
+           "residualtumor")) 
+col_fun = colorRamp2(c(-2, 0, 2), c("pink", "white", "cadetblue"))
+col_fun(seq(-3, 3))
 top_genes7_mat <-  top_genes7_mat[, -8]
 top_genes7_mat <- data.matrix(top_genes7_mat)
-Heatmap(top_genes7_mat)
-row_ha = rowAnnotation(study = gtex_counts_train$grupe)
-Heatmap(top_genes7_mat, right_annotation = row_ha)
+rownames(top_genes7_mat) = NULL
+row_ha = rowAnnotation(study = gtex_counts_train$grupe,
+                       grade =top_genes7_mat_clin$neoplasmhistologicgrade, 
+                       stage = top_genes7_mat_clin$figo_stage, 
+                       status = top_genes7_mat_clin$vitalstatus, 
+                       `residual disease` = top_genes7_mat_clin$residualtumor, 
+                       gp = gpar(row_names_gp = NULL) )
+Heatmap(top_genes7_mat, right_annotation = row_ha, col = col_fun ) 
+############################################################################
+#
