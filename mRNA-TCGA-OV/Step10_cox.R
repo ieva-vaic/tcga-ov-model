@@ -5,7 +5,7 @@
 setwd("~/rprojects/TCGA-OV-data") #wsl
 library(glmnet)
 library(tidyverse)
-library("survival")
+library(survival)
 library(gplots)
 library(survminer)
 library(RegParallel)
@@ -24,7 +24,7 @@ dim(gtex_filtered_counts_train2)
 pheno_train <- readRDS("tcga_pheno_train.RDS")
 #336 samples, 69 variables
 
-# we are only interested in the "Primary solid Tumor" cases for survival
+# survival df
 clin_df = pheno_train[,
                    c("barcode",
                      "vital_status",
@@ -186,7 +186,6 @@ y2 <- as.matrix(y2)
 head(y2)
 surv_counts <- clin_df_joined2[, 11:228]
 
-
 cox_fitx <- glmnet(surv_counts, y2, family="cox", maxit = 1000)
 cox_fitx
 plot(cox_fitx)
@@ -202,5 +201,5 @@ write.csv(res_coef_cox_names, "res_coef_coxnet_names.csv")
 #i want a df with colums: time, censor, genes exp
 rownames(clin_df_joined2) <- clin_df_joined2$barcode
 surv_df <- clin_df_joined2[, c(8, 230, 11:229)]
-surv_df <- surv_df %>% rename(censor = decesed2, surv_time = overall_survival)
+surv_df <- surv_df %>% rename(censor = decesed2, surv_time = overall_survival) #
 write.csv(surv_df, "top_glm_for_surv.csv")
