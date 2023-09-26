@@ -105,14 +105,16 @@ surv_counts <- as.matrix(surv_counts)
 cox_fitx <- glmnet(surv_counts, y2, family="cox")
 cox_fitx
 plot(cox_fitx)
-coef_x <- coef(cox_fitx, s = 0.05)
+coef_x <- coef(cox_fitx, s = 0.08)#pasirinkau lambda 1se
 head(coef_x)
 coef_x = coef_x[coef_x[,1] != 0,] 
 res_coef_cox_names = names(coef_x) # get names of the (non-zero) variables.
-res_coef_cox_names #38
-#cross-validation using the Harell C index. Note that unlike most error measures, a higher C index means better prediction performance
+res_coef_cox_names #12
+saveRDS(res_coef_cox_names, "12coxnet.1se.RDS")
+saveRDS(cox_fitx, "12coxnet.cox_fitx.RDS")
 set.seed(1)
 cvfit <- cv.glmnet(surv_counts, y2, family = "cox", type.measure = "C")
 plot(cvfit)
 cvfit$lambda.min
 cvfit$lambda.1se
+

@@ -181,3 +181,63 @@ clin_df_joined %>%
   result9
 print(result9)
 forest_plot(result9,  labels_displayed = c("endpoint", "factor", "n"),)
+
+#Age HR=1?
+ggplot(data=clin_df_joined,  aes(x = age_at_diagnosis, y = overall_survival))+
+  geom_point() +
+  geom_smooth()
+
+#age ne dienom, o metais?
+clin_df_joined <-clin_df_joined %>%
+  mutate(age_at_diagnosis_ys = age_at_diagnosis/365)
+
+ggplot(data=clin_df_joined,  aes(x = age_at_diagnosis_ys, y = overall_survival))+
+  geom_point() +
+  geom_smooth()
+
+age.cox <- coxph(Surv(overall_survival, censor) ~ age_at_diagnosis_ys, data = clin_df_joined)
+summary(age.cox)
+#top12, 1se
+clin_df_joined %>%
+  mutate(tumor_stage = as.factor(tumor_stage), 
+         tumorresidualdisease = as.factor(tumorresidualdisease), 
+         grade = as.factor(grade),
+         KDF1 = as.numeric(KDF1),
+         PPT2 = as.numeric(PPT2),
+         TPM3 = as.numeric(TPM3),
+         VPS33B = as.numeric(VPS33B),
+         LUC7L2 = as.numeric(LUC7L2),
+         PKP3 = as.numeric(PKP3),
+         RAD50 = as.numeric(RAD50),
+         EXO1 = as.numeric(EXO1),
+         CDCA5 = as.numeric(CDCA5),
+         ZFPL1 = as.numeric(ZFPL1),
+         GRB7 = as.numeric(GRB7),
+         SNX21 = as.numeric(SNX21)
+  ) %>%
+  analyse_multivariate(vars(overall_survival, censor),
+                       covariates = vars(age_at_diagnosis,tumor_stage, 
+                                         tumorresidualdisease,
+                                         grade, intermediate_dimension, 
+                                         KDF1,
+                                         PPT2,
+                                         TPM3,
+                                         VPS33B,
+                                         LUC7L2,
+                                         PKP3,
+                                         RAD50,
+                                         EXO1,
+                                         CDCA5,
+                                         ZFPL1,
+                                         GRB7,
+                                         SNX21),
+                       covariate_name_dict = covariate_names,
+                       reference_level_dict=c(tumorresidualdisease="No Macroscopic disease")) ->
+  result12
+print(result12)
+forest_plot(result12,  labels_displayed = c("endpoint", "factor", "n"),)
+
+
+
+
+
