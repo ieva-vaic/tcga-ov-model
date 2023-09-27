@@ -1,6 +1,6 @@
 #Step 2.1: clean pheno data
 library(tidyverse)
-setwd("~/rprojects/TCGA-OV-data")
+setwd("/home/ieva/rprojects/TCGA-OV-data")
 pheno <- readRDS("pheno.RDS")
 #Step 2.1 parse and clean pheno data
 non_informative <- c("shortLetterCode",  "tumor_descriptor", "state", "is_ffpe", "tissue_type",
@@ -30,7 +30,8 @@ had_treatment$patient <- had_treatment$patient_names #add patient names for easy
 had_treatment <- had_treatment %>% group_by(patient_names) %>% mutate(undergone_treatments=paste(sort(treatment_type), collapse="_"))   #galutinej eilutej treatment eiga
 had_treatment_collaped <- had_treatment[!duplicated(had_treatment$patient_names), ] # remove duplications, resulting smaller dataframe
 #merge treatments and normal pheno data frame (final pheno dataframe)
-pheno_final <- merge(x = new_pheno, y = had_treatment_collaped, by = "patient", all = TRUE) #429 pac ir 47 clinikiniai
+pheno_final <- merge(x = new_pheno, y = had_treatment_collaped, by = "patient", all = TRUE) #429 pac ir 35 clinikiniai
+dim(pheno_final)
 rm(new_pheno)
 rm(treatments_dataframe) 
 rm(had_treatment)
@@ -52,15 +53,19 @@ pheno_final2 <- pheno_final %>%
   relocate(sample.aux, .before = sample) %>%
   select(-(patient_names)) %>%
   select(-(sample_submitter_id)) 
+dim(pheno_final2)
 saveRDS(pheno_final2, "pheno_no_empty_data.RDS")
 
 ########################################################################
 #also add clinical from XENA
 XENAclin <- read_csv("~/rprojects/TCGA-OV-data/00_ClinTraits.csv")
 XENAclin <- XENAclin[, -1]
-XENAclin$sample.aux <- XENAclin$sampleID #584 genes 37 vars
-XENAclin <- XENAclin[(XENAclin$sample.aux %in% pheno_final2$sample.aux), ] #lieka 420
-joined_clin <- left_join(pheno_final2, XENAclin, by = "sample.aux" ) #nepamirst kad 9 be data
+XENAclin$sample.aux <- XENAclin$sampleID
+dim(XENAclin) #584 genes 36 vars
+XENAclin <- XENAclin[(XENAclin$sample.aux %in% pheno_final2$sample.aux), ] 
+dim(XENAclin)#lieka 420
+joined_clin <- left_join(pheno_final2, XENAclin, by = "sample.aux" ) 
+dim(joined_clin)#nepamirst kad 9 be data
 saveRDS(joined_clin, "joinedTCGA_XENA_clinical.RDS")
 table(joined_clin$figo_stage, useNA="a")
 table(joined_clin$clinicalstage, useNA="a")

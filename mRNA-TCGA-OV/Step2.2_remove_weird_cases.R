@@ -1,8 +1,7 @@
 #Step 2.2.0 remove weird people from tcga
 library(tidyverse)
 library(SummarizedExperiment)
-setwd("~/rprojects/TCGA-OV-data")
-#po to i prieki nukelt
+setwd("/home/ieva/rprojects/TCGA-OV-data")
 #splice with pheno
 pheno_final <- readRDS("joinedTCGA_XENA_clinical.RDS") #or use "pheno_no_empty_data.RDS"
 tcga_data <- readRDS("tcga_data.RDS")
@@ -13,7 +12,7 @@ tcga_counts_t <- as.data.frame(tcga_counts_t) #non-numeric
 tcga_counts_t$barcode <- rownames(tcga_counts_t)
 
 tgca_pheno <- right_join(pheno_final, tcga_counts_t, by = "barcode")
-dim(tgca_pheno) #429 zmones ir 60729 (60464 genai + 69 clinical)
+dim(tgca_pheno) #429 zmones ir 60727 (60660 genai + 67 clinical)
 rownames(tgca_pheno) <- tgca_pheno$barcode
 
 ################################################################################
@@ -42,8 +41,8 @@ dim(mRNA_full) # 416 lieka iš 429, so cheks out
 #saveRDS to pass on to add names
 saveRDS(mRNA_full, "tcga_no_weird_full.RDS")
 
-pheno <- mRNA_full[, 1:69]
-tcga_data <- mRNA_full[, 70:60729]
+pheno <- mRNA_full[, 1:67]
+tcga_data <- mRNA_full[, 68:60727]
 
 saveRDS(tcga_data, "tcga_no_weird_counts.RDS")
 saveRDS(pheno, "tcga_no_weird_pheno_XENA_TCGA.RDS")

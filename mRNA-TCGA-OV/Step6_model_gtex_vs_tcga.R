@@ -27,8 +27,7 @@ res_coef_gtex = res_coef_gtex[res_coef_gtex[,1] != 0,]
 res_coef_gtex = res_coef_gtex[-1]
 res_coef_gtex_names = names(res_coef_gtex) # get names of the (non-zero) variables.
 res_coef_gtex_names 
-# "TTC4"    "SLC39A1" "TMEM110" "RAD50"   "ANKHD1"  "ZBTB9"   "RPS10"   "CLDN4"   "PFDN5"   "PAGR1"  
-# "RNASEK"  "GPS2"    "RTEL1" 
 ################################################################################
-
+saveRDS(res_gtex, "elastic_net_model_gtex.RDS")
 saveRDS(res_coef_gtex_names, "gtcga_elastic.RDS")
+

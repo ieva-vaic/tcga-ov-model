@@ -10,10 +10,11 @@ library(DESeq2)
 #working with full data!
 setwd("~/rprojects/TCGA-OV-data") #wsl
 
-counts_gtcga <- readRDS("gtcga_final_counts2.RDS") #large numeric df with rows as genes
+counts_gtcga <- readRDS("gtcga_final_counts.RDS") #large numeric df with rows as genes
 ##############################################################################
 #OUTLIERS
-counts_gtcga <- data.matrix(counts_gtcga) #19193   596
+counts_gtcga <- data.matrix(counts_gtcga) 
+dim(counts_gtcga)#19193   596
 # detect outlier genes with gsg
 gsg <- goodSamplesGenes(counts_gtcga) #no transpose, wgcna package
 summary(gsg) #weather there are outliers
@@ -31,6 +32,9 @@ png(file="figures/htree_proteins_gtex_tcga2.png", height=3000, width=6000) #išs
 plot(htree) #dstant samples should be excluded #save portrait 20x66 inch pdf
 dev.off()
 
+pdf(file="figures/htree_proteins_gtex_tcga2.pdf", height=50, width=100) #išsaugijimui didesniu formatu
+plot(htree) #dstant samples should be excluded #save portrait 20x66 inch pdf
+dev.off()
 ##probably ta tolimiausia zmogu nusalint reiktu. 
 #XENA tutotiale plius buvo nusalintas TCGA.25.1870.01
 #TCGA−13−1499−01A−01R−1565−13 nusalinsiu

@@ -1,13 +1,13 @@
 #Step0.1 ADD XENA clinical data
 #I have noticed that XENA database has the same samples but more clinical data
-knitr::opts_chunk$set(echo = TRUE)
-library(UCSCXenaTools);
-library(data.table);
-library(R.utils);
-library(dplyr);
-setwd("~/rprojects/XENA/")
+#protokolas ir failai: https://doi.org/10.1016/j.xpro.2022.101168 
+library(UCSCXenaTools)
+library(data.table)
+library(R.utils)
+library(dplyr)
+setwd("/home/ieva/rprojects/TCGA-OV-data/XENA/")
 
-data(XenaData);
+data(XenaData)
 write.csv(XenaData, "00_tblXenaHubInfo.csv")
 
 GeneExpectedCnt_toil = XenaGenerate(subset = XenaHostNames == "toilHub") %>%

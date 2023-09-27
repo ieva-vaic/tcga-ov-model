@@ -11,8 +11,8 @@ train_ids <- rbinom(nrow(gtcga_counts), size = 1, prob = 0.8) ==1 #choose persen
 gtex_counts_train = gtcga_counts[train_ids, ] 
 gtex_counts_test  = gtcga_counts[!train_ids, ] 
 
-dim(gtex_counts_train) #489 13680
-dim(gtex_counts_test) #106 13680
+dim(gtex_counts_train) #489 13674
+dim(gtex_counts_test) #106 13674
 
 snames_train = rownames(gtex_counts_train);
 group_train = as.factor(substr(snames_train, 1, 4))

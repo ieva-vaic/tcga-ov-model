@@ -22,7 +22,7 @@ ggo.elastic.entrez <- as.data.frame(ggo.elastic.entrez)
 ggo.elastic.entrez.filt <- ggo.elastic.entrez %>% filter(Count != "0")
 ggo.entez <- ggo.elastic.entrez.filt
 ggo.entez <- ggo.entez %>% arrange(desc(Count))
-View(ggo.entez)
+write.csv(ggo.entez, "figures/elasticnetGGO.csv")
 ego.recorded.num <- enrichGO(gene = elastic.entrez,
                              OrgDb         = org.Hs.eg.db,
                              ont           = "CC",
@@ -30,8 +30,11 @@ ego.recorded.num <- enrichGO(gene = elastic.entrez,
                              pvalueCutoff  = 0.05,
                              qvalueCutoff  = 0.05,
                              readable      = TRUE)
-View(as.data.frame(ego.recorded.num))
+write.csv(as.data.frame(ego.recorded.num), "figures/elasticnetEGO.csv")
+png(file="figures/elasticnet_ego.png", height=350, width=500)
 goplot(ego.recorded.num)
+dev.off()
+
 #try go at the coxnet ~35 genes selected for nice pictures and stuff
 res_coef_cox_names <- read.csv("res_coef_coxnet_names.csv")
 res_coef_cox_names <- res_coef_cox_names$x

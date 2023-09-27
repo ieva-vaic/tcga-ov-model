@@ -7,7 +7,8 @@ tcga_data <- readRDS("tcga_no_weird_counts.RDS")
 #########
 mRNA_counts <- t(tcga_data)
 ##assay data converted to dataframe
-mRNA_counts <- as.data.frame(mRNA_counts) #60660 transcripts (rows), 416 zmones (cols) 
+mRNA_counts <- as.data.frame(mRNA_counts) 
+dim(mRNA_counts)#60660 transcripts (rows), 416 zmones (cols) 
 mRNA_counts[,1:416] <- lapply(mRNA_counts[,1:416], as.numeric)
 str(mRNA_counts) #60660 genes
 
@@ -38,6 +39,5 @@ saveRDS(counts_tcga_with_gene_names, "tcga_with_names_all.RDS")
 #pasalinti na, jei genas neturi vardo greiciausiai vistiek jo nenoriu tirt
 #counts_tcga_with_gene_names_sub <- counts_tcga_with_gene_names %>% drop_na(external_gene_name)
 #dim(counts_tcga_with_gene_names_sub) #60463   420
-
 #del pasikartojanciu vardu negaliu uzdeti ant rownames genu pavadinimu, so save
-saveRDS(counts_tcga_with_gene_names_sub, "tcga_with_names.RDS")
+#saveRDS(counts_tcga_with_gene_names_sub, "tcga_with_names.RDS")

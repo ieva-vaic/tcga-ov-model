@@ -1,5 +1,6 @@
 #Step 3: splice gtex and TCGA-OV mRNA counts together
 library(tidyverse)
+library(RColorBrewer)
 setwd("~/rprojects/TCGA-OV-data")
 gtex_counts <- readRDS("GTEX/gtex_counts.RDS")
 
@@ -30,11 +31,11 @@ not_matching <- tcga_counts[!(tcga_counts$external_gene_name %in% sutampa), ]
 table(not_matching$gene_biotype, useNA="a") #1583 tiek protein coding prarandama!
 ##
 rownames(gtex_df) <- gtex_df$Name
-gtex_df[,3:180] <- lapply(gtex_df[,3:180], as.numeric)
+gtex_df[,3:182] <- lapply(gtex_df[,3:182], as.numeric)
 dim(gtex_df) #56200 genes
 gtex_df$external_gene_name <- gtex_df$Description
 gtex_df$ensembl_gene_id <- gsub("\\..*", "",gtex_df$Name)
-sum(gtex_df$ensembl_gene_id %in% tcga_counts$ensembl_gene_id) #55513 sutampa tiek
+sum(gtex_df$ensembl_gene_id %in% tcga_counts$ensembl_gene_id) #55661 sutampa tiek, dingsta 539
 
 ##############################################################################
 #the problem when joinging on gene names is that not all gene names is unique,
@@ -46,7 +47,7 @@ sum(gtex_df$ensembl_gene_id %in% tcga_counts$ensembl_gene_id) #55513 sutampa tie
 #Thus I need single line per gene on both count matrixes!
 #one option is for the conflicted genes leave the higest expression transcript
 #pimiausia jungsiu per ensemble names, tam reikia pasalinti pasikartojancius
-rownames(tcga_counts) <- tcga_counts$external_gene_name
+#rownames(tcga_counts) <- tcga_counts$external_gene_name
 dup_tcga <- duplicated(tcga_counts$ensembl_gene_id)
 dup_tcga <- tcga_counts[dup_tcga, ] #visi parY
 #all of these genes has no counts, I don´t want them anayways
@@ -71,14 +72,26 @@ dim(gtcga) #56156   603
 sum(is.na(gtcga$external_gene_name.y)) #tiek genu ner tcga: 687, sakyciau ner daug
 gtcga_na <- gtcga[is.na(gtcga$external_gene_name.y), ] 
 #paziurejus visokie random genai, vistiek per juos skaiciuot nieko negalesiu todel pasalinu
-gtcga_final <- gtcga[!(is.na(gtcga$external_gene_name.y)), ] #final 55469 genes
+gtcga_final <- gtcga[!(is.na(gtcga$external_gene_name.y)), ] 
+dim(gtcga_final)#final 55469 genes
 saveRDS(gtcga_final, "gtcga_final.RDS")
 ##############################################################################
 #remove non-protein-coding
-table(gtcga_final$gene_biotype, useNA = "a")
+biotypes <- table(gtcga_final$gene_biotype, useNA = "a")
+biotypes <- as.data.frame(biotypes)
+biotypes
+png(file="figures/biotypes.png", height=1000, width=1000)
+  ggplot(biotypes,
+       aes(x = biotypes$Var1, y = biotypes$Freq, color = biotypes$Var1, fill=biotypes$Var1)) +
+  geom_col() +
+  labs(x = NULL, y = "Number of genes") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 0.5, vjust = 0.5))
+dev.off()
+
 gtgca_protein <- gtcga_final[(gtcga_final$gene_biotype == "protein_coding" ), ]
 dim(gtgca_protein) #liko 19197 genu is 55469     
 table(gtgca_protein$gene_biotype, useNA = "a") 
+
 ################################################################################
 #find repeating names
 #Siaip noreciau kad butu vardai ne gtex kurie mostly sinomimai visokie,
@@ -102,8 +115,9 @@ rownames(gtgca_protein) <- gtgca_protein$external_gene_name.y
 saveRDS(gtgca_protein, "gtcga_final_protein_w_biomart_names.RDS")
 
 #loose the gene descriptions now
-gtgca_final_no_names <- gtgca_protein[, -c(1:2, 183:184, 601:603)] #37930   601
-saveRDS(gtgca_final_no_names, "gtcga_final_counts2.RDS")
+gtgca_final_no_names <- gtgca_protein[, -c(1:2, 183:184, 601:603)] 
+dim(gtgca_final_no_names) #19197   596
+saveRDS(gtgca_final_no_names, "gtcga_final_counts.RDS")
 
 
 
