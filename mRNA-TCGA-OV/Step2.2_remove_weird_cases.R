@@ -22,10 +22,12 @@ mRNA_full1 <- tgca_pheno #temporarily change name
 split_by_definition <- split(mRNA_full1, f = mRNA_full1$definition, drop = T)
 weird_cases <- split_by_definition$`Recurrent Solid Tumor` # weird group 7 people
 mRNA_full <- split_by_definition$`Primary solid Tumor` #new new phenodata
+dim(weird_cases)
 
 split_prior_treatment <- split(mRNA_full, f = mRNA_full$prior_treatment, drop = T)
 mRNA_full <- split_prior_treatment$No #now the mRNA_full are good cases
 weird_cases <- rbind(weird_cases, split_prior_treatment$Yes) 
+dim(weird_cases)
 
 #dar zinokite noresiu ir 5 non serous cystadenocarnoma nusidropinti
 table(mRNA_full$primary_diagnosis, useNA="a")

@@ -36,8 +36,4 @@ dim(tcga_genes) #60419 = 241 pamesta
 counts_tcga_with_gene_names <- left_join(mRNA_counts, tcga_genes, by= "ensembl_gene_id")
 dim(counts_tcga_with_gene_names) #60660   420
 saveRDS(counts_tcga_with_gene_names, "tcga_with_names_all.RDS")
-#pasalinti na, jei genas neturi vardo greiciausiai vistiek jo nenoriu tirt
-#counts_tcga_with_gene_names_sub <- counts_tcga_with_gene_names %>% drop_na(external_gene_name)
-#dim(counts_tcga_with_gene_names_sub) #60463   420
-#del pasikartojanciu vardu negaliu uzdeti ant rownames genu pavadinimu, so save
-#saveRDS(counts_tcga_with_gene_names_sub, "tcga_with_names.RDS")
+

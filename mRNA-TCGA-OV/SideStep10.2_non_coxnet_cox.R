@@ -175,31 +175,3 @@ arrange_ggsurvplots(list_of_plots, ncol=3, nrow=2 )
 dev.off()
 
 ##############################################################################
-#COXNET!
-clin_df_joined2 <- clin_df_joined %>% drop_na(overall_survival) %>% drop_na(deceased) 
-clin_df_joined2$decesed2 <- as.integer(as.logical(clin_df_joined2$deceased))
-time <- clin_df_joined2$overall_survival
-status <- clin_df_joined2$decesed2
-y2 <- clin_df_joined2[ ,c(8,7)]
-names(y2) <- c("time", "status")
-y2 <- as.matrix(y2)
-head(y2)
-surv_counts <- clin_df_joined2[, 11:228]
-
-cox_fitx <- glmnet(surv_counts, y2, family="cox", maxit = 1000)
-cox_fitx
-plot(cox_fitx)
-coef_x <- coef(cox_fitx, s = 0.05)
-head(coef_x)
-
-coef_x = coef_x[coef_x[,1] != 0,] 
-res_coef_cox_names = names(coef_x) # get names of the (non-zero) variables.
-res_coef_cox_names #38
-write.csv(res_coef_cox_names, "res_coef_coxnet_names.csv")
-
-###############################################################################
-#i want a df with colums: time, censor, genes exp
-rownames(clin_df_joined2) <- clin_df_joined2$barcode
-surv_df <- clin_df_joined2[, c(8, 230, 11:229)]
-surv_df <- surv_df %>% rename(censor = decesed2, surv_time = overall_survival) #
-write.csv(surv_df, "top_glm_for_surv.csv")

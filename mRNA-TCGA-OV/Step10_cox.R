@@ -1,6 +1,6 @@
 #Step10 survival:
 #esmė bus ta, kad čia pasiliksiu tik TCGA žmones, nes jiems turiu survival
-#ir tik 221 geną, kurį atsirenka elatic net tarp sveikų ir ne
+#ir tik 214 geną, kurį atsirenka elatic net tarp sveikų ir ne
 
 setwd("~/rprojects/TCGA-OV-data") #wsl
 library(glmnet)
@@ -97,12 +97,17 @@ write.csv(res_coef_cox_names, "res_coef_coxnet_names.csv")
 saveRDS(cox_fitx, "coxnet_fit.RDS")
 saveRDS(cvfit, "coxnet_cvfit.RDS")
 
+res_coef_cox_names <- read.csv("res_coef_coxnet_names.csv")
+res_coef_cox_names <- res_coef_cox_names$x
+cox_fitx <- readRDS("coxnet_fit.RDS")
+cvfit <- readRDS("coxnet_cvfit.RDS")
 ###############################################################################
 #test my 10 genes by survroc
 #fist I need a matrix with overall survival, cencorship, and genes form elastic net
 rownames(clin_df_joined2) <- clin_df_joined2$barcode
 surv_df <- clin_df_joined2[, c(8, 224, 10:223)]
-surv_df <- surv_df %>% rename(censor = decesed2, surv_time = overall_survival) #
+
+surv_df <- surv_df %>% dplyr::rename(censor = decesed2, surv_time = overall_survival) 
 write.csv(surv_df, "top_glm_for_surv.csv")
 #need these for survrock
 nobs <- NROW(surv_df)
