@@ -103,3 +103,19 @@ p =  plot(rez_list[[i]]$FP, rez_list[[i]]$TP, type="l", xlim=c(0,1), ylim=c(0,1)
 print(p) 
 dev.off()
 }
+###################################################################################################
+res_coef_cox_names2 <- c(res_coef_cox_names, "grupe")
+gtex_counts_test2 <- gtex_counts_test
+gtex_counts_test2$grupe <-  rownames(gtex_counts_test)
+gtex_counts_test2$grupe <-  substr(gtex_counts_test2$grupe, 1, 4)
+
+png("figures/test_grupes_box.png", width=600, height=500, res=120)
+gtex_counts_test2 %>% select(res_coef_cox_names2) %>%
+  pivot_longer(., cols = c(res_coef_cox_names[1:10]), names_to = "Genes", values_to = "EXPR") %>%
+  ggplot(aes(x = Genes, y = EXPR, fill = grupe)) +
+  geom_boxplot()+
+  ylab("Normalized expression")+
+  theme(
+    axis.text.x = element_text(face = "italic", angle=-90))+
+  guides(fill=guide_legend(title="Study"))
+dev.off()

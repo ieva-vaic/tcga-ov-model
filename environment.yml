@@ -25,7 +25,12 @@ dependencies:
   - bioconductor-GDCRNATools=1.20.0
   - r-UCSCXenaTools=1.4.8 
   - r-dendextend=1.17.1
-  - bioconductor-tximport 
+  - bioconductor-tximport=1.28.0 
+  - r-RColorBrewer=1.1_3  
+  - r-survivalROC=1.0.3.1
+  - r-yardstick=1.2.0
+  - r-tidytidbits=0.3.2 
+  - r-survivalAnalysis=0.3.0
 #corlevelplot is not in conda
 
 

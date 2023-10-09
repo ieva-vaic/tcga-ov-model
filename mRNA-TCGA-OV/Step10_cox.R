@@ -47,7 +47,7 @@ clin_df$tumor_stage = gsub("[ABC]$", "", clin_df$figo_stage)
 clin_df[which(clin_df$tumor_stage == "Stage I"), "tumor_stage"] = NA
 table(clin_df$tumor_stage, useNA = "a")
 
-
+saveRDS(clin_df, "pheno_survival_only.RDS")
 ###############################################################################
 #okay su clinical feature modeliais done lets test genes
 #for simplicity pasiimsiu 1 tiesiog pradziai ´
@@ -96,3 +96,30 @@ write.csv(res_coef_cox_names, "res_coef_coxnet_names.csv")
 ###############################################################################
 saveRDS(cox_fitx, "coxnet_fit.RDS")
 saveRDS(cvfit, "coxnet_cvfit.RDS")
+
+###############################################################################
+#test my 10 genes by survroc
+#fist I need a matrix with overall survival, cencorship, and genes form elastic net
+rownames(clin_df_joined2) <- clin_df_joined2$barcode
+surv_df <- clin_df_joined2[, c(8, 224, 10:223)]
+surv_df <- surv_df %>% rename(censor = decesed2, surv_time = overall_survival) #
+write.csv(surv_df, "top_glm_for_surv.csv")
+#need these for survrock
+nobs <- NROW(surv_df)
+cutoff <- 365
+
+coxnet.df <- surv_df[, (colnames(surv_df) %in% res_coef_cox_names)]
+dim(coxnet.df) #334  10 #kazkur pametu 2 zmones, kol kas neieskosiu
+time <- surv_df$surv_time
+event <- surv_df$censor
+rez_list <- apply(coxnet.df, 2, survivalROC, Stime = time, status = event, predict.time = cutoff, method="KM")
+for (i in seq_along(rez_list)) {
+png(paste("figures/plot_", i, ".png", sep = ""), width=600, height=500, res=120) # start export
+p =  plot(rez_list[[i]]$FP, rez_list[[i]]$TP, type="l", xlim=c(0,1), ylim=c(0,1),
+       xlab=paste( "FP", "\n", "AUC = ", round(rez_list[[i]]$AUC,3)),
+       ylab="TP",
+       main=paste(names(rez_list)[i],", Method = KM, Year = 1"), )
+  abline(0,1)
+print(p) 
+dev.off()
+}
