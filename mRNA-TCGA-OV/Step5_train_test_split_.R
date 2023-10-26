@@ -38,7 +38,7 @@ dim(pheno_train)
 
 tcga_test_ <- grep("TCGA", snames_test)
 tcga_test_ids <- snames_test[tcga_test_]
-pheno_test = pheno[tcga_test_ids, ]  #336 samples
+pheno_test = pheno[tcga_test_ids, ]  #79 samples
 dim(pheno_test)
 
 #save

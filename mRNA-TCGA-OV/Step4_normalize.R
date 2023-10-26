@@ -31,9 +31,6 @@ png(file="figures/htree_proteins_gtex_tcga2.png", height=3000, width=6000) #išs
 plot(htree) #dstant samples should be excluded #save portrait 20x66 inch pdf
 dev.off()
 
-pdf(file="figures/htree_proteins_gtex_tcga2.pdf", height=50, width=100) #išsaugijimui didesniu formatu
-plot(htree) #dstant samples should be excluded #save portrait 20x66 inch pdf
-dev.off()
 ##probably ta tolimiausia zmogu nusalint reiktu. 
 #XENA tutotiale plius buvo nusalintas TCGA.25.1870.01
 #TCGA−13−1499−01A−01R−1565−13 nusalinsiu
