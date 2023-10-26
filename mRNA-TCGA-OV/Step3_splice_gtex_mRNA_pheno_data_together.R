@@ -23,11 +23,9 @@ tcga_names <- tcga_counts$external_gene_name
 gtex_names <- gtex_df$Description
 sum(gtex_names %in% tcga_names) #36056
 sum(tcga_names %in% gtex_names) #35815
-sutampa <- intersect(gtex_names, tcga_names)
-"ARID1A" %in% sutampa #yra zinomi genai
-
+intersect_genes <- intersect(gtex_names, tcga_names)
 ##what are the genes that do not match?
-not_matching <- tcga_counts[!(tcga_counts$external_gene_name %in% sutampa), ]
+not_matching <- tcga_counts[!(tcga_counts$external_gene_name %in% intersect_genes), ]
 table(not_matching$gene_biotype, useNA="a") #1583 tiek protein coding prarandama!
 ##
 rownames(gtex_df) <- gtex_df$Name
@@ -40,38 +38,37 @@ sum(gtex_df$ensembl_gene_id %in% tcga_counts$ensembl_gene_id) #55661 sutampa tie
 ##############################################################################
 #the problem when joinging on gene names is that not all gene names is unique,
 #this might be because some genes might have haplotypes
-#jei jungt per transcriptus irgi not good:
-#skiriasi transciprtai
 #ENSG00000117713.20 tcga
 #ENSG00000117713.18 gtex
 #Thus I need single line per gene on both count matrixes!
-#one option is for the conflicted genes leave the higest expression transcript
-#pimiausia jungsiu per ensemble names, tam reikia pasalinti pasikartojancius
-#rownames(tcga_counts) <- tcga_counts$external_gene_name
+#choosing to splice on the ensemble gene names
+#some genes (PAR_Y) has the same ensg name, thus need to delete them
 dup_tcga <- duplicated(tcga_counts$ensembl_gene_id)
 dup_tcga <- tcga_counts[dup_tcga, ] #visi parY
-#all of these genes has no counts, I don´t want them anayways
+dup_tcga$ensembl
+#all of these Y chromosome genes has no counts, I don´t want them anayways
 dup_gtex <- duplicated(gtex_df$ensembl_gene_id) ##44
-dup_gtex <- gtex_df[dup_gtex, ] #visi turi "PAR_Y", t.y yra Y chormosomos, neturetu but raiskos moteryje
-## delete dupplicated - gal uzteks visus parY nutrinti?
+dup_gtex <- gtex_df[dup_gtex, ] 
+dup_gtex$Name
+#again, Y chromosome
 ENTG_Y <- tcga_counts[grepl('_PAR_Y', tcga_counts$ensembl), ]
 ENTG_Y_names <- ENTG_Y$ensembl
 tcga_counts_filt <- tcga_counts[!(tcga_counts$ensembl %in% ENTG_Y_names), ]
 rownames(tcga_counts_filt) <- tcga_counts_filt$ensembl_gene_id #
-dim(tcga_counts_filt) #lieka  60419   420
+dim(tcga_counts_filt) #left:  60419   420
 #now for gtex
 ENTG_YG <- gtex_df[grepl('_PAR_Y', gtex_df$Name), ]
-ENTG_YG_names <- ENTG_YG$Name #turbut tie patys bet anyways
+ENTG_YG_names <- ENTG_YG$Name 
 gtex_counts_filt <- gtex_df[!(gtex_df$Name %in% ENTG_YG_names), ]
 rownames(gtex_counts_filt) <- gtex_counts_filt$ensembl_gene_id #veik rownames 
-dim(gtex_counts_filt) #lieka  60419   420
+dim(gtex_counts_filt) #left 56156   184
 #join!
 gtcga <- left_join(gtex_counts_filt, tcga_counts_filt, by = "ensembl_gene_id")
 dim(gtcga) #56156   603
 #some genes are only in GTEX!
 sum(is.na(gtcga$external_gene_name.y)) #tiek genu ner tcga: 687, sakyciau ner daug
 gtcga_na <- gtcga[is.na(gtcga$external_gene_name.y), ] 
-#paziurejus visokie random genai, vistiek per juos skaiciuot nieko negalesiu todel pasalinu
+#loose genes that are not in both gtex and tcga:
 gtcga_final <- gtcga[!(is.na(gtcga$external_gene_name.y)), ] 
 dim(gtcga_final)#final 55469 genes
 saveRDS(gtcga_final, "gtcga_final.RDS")
@@ -94,21 +91,21 @@ table(gtgca_protein$gene_biotype, useNA = "a")
 
 ################################################################################
 #find repeating names
-#Siaip noreciau kad butu vardai ne gtex kurie mostly sinomimai visokie,
-#bet hugo vardai is biomarto. Taciau beda bus del nesutampanciu ir tusciu
+#I prefer biomart names, as some names in GTEX are synonyms in HUGO nomenclature
+#however, some biomart names are missing, thus are going to be filled by gtex provided names
 gtgca_protein["external_gene_name.y"][gtgca_protein["external_gene_name.y"] == ''] <- NA
 any(is.na(gtgca_protein$external_gene_name.y))
 gtgca_protein <- gtgca_protein %>% 
   mutate(external_gene_name.y = coalesce(external_gene_name.y, Description))  
 any(is.na(gtgca_protein$external_gene_name.y))
-#liko pataisyti NPIPA9
+#fix NPIPA9
 which(gtgca_protein$external_gene_name.y == 'NPIPA9')
 gtgca_protein[13803, 602] <- NA
 gtgca_protein[13807, 602] <- NA
 gtgca_protein <- gtgca_protein %>% 
   mutate(external_gene_name.y = coalesce(external_gene_name.y, Description))  
 any(is.na(gtgca_protein$external_gene_name.y))
-
+#add gene names as rownames
 rownames(gtgca_protein) <- gtgca_protein$external_gene_name.y
 
 #SAVE!

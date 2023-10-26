@@ -5,7 +5,7 @@ library(UCSCXenaTools)
 library(data.table)
 library(R.utils)
 library(dplyr)
-setwd("/home/ieva/rprojects/TCGA-OV-data/XENA/")
+setwd("~/rprojects/TCGA-OV-data/XENA/")
 
 data(XenaData)
 write.csv(XenaData, "00_tblXenaHubInfo.csv")

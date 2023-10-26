@@ -25,3 +25,22 @@ summary(group_train) #27gtex   79 tcga
 #save
 saveRDS(gtex_counts_train, "train_gtcga_normcounts_prot.RDS")
 saveRDS(gtex_counts_test, "test_gtcga_normcounts_prot.RDS")
+
+#split clinical data as well
+pheno <- readRDS("tcga_no_weird_pheno_XENA_TCGA.RDS") #full clinical
+dim(pheno) #416  69
+#the pheno only has the tcga ids, thus the need to filter
+tcga_train_ <- grep("TCGA", snames_train)
+tcga_train_ids <- snames_train[tcga_train_]
+pheno_train  = pheno[tcga_train_ids, ]  #336 samples
+dim(pheno_train)
+
+
+tcga_test_ <- grep("TCGA", snames_test)
+tcga_test_ids <- snames_test[tcga_test_]
+pheno_test = pheno[tcga_test_ids, ]  #336 samples
+dim(pheno_test)
+
+#save
+saveRDS(pheno_train, "tcga_pheno_train.RDS")
+saveRDS(pheno_test, "tcga_pheno_test.RDS")

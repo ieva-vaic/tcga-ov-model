@@ -1,10 +1,9 @@
-#Step2.3 change all gene names 
-#I want my count matrix to have gene names instead of ENSG 
+#Step2.3 add biomart -> gene names and types
 library(tidyverse)
 library(biomaRt)
 setwd("~/rprojects/TCGA-OV-data")
 tcga_data <- readRDS("tcga_no_weird_counts.RDS")
-#########
+#read from step 2.2
 mRNA_counts <- t(tcga_data)
 ##assay data converted to dataframe
 mRNA_counts <- as.data.frame(mRNA_counts) 
@@ -34,6 +33,7 @@ dim(tcga_genes) #60419 = 241 pamesta
 
 #prisijoinsiu dfs
 counts_tcga_with_gene_names <- left_join(mRNA_counts, tcga_genes, by= "ensembl_gene_id")
+rownames(counts_tcga_with_gene_names) <- counts_tcga_with_gene_names$ensembl
 dim(counts_tcga_with_gene_names) #60660   420
 saveRDS(counts_tcga_with_gene_names, "tcga_with_names_all.RDS")
 

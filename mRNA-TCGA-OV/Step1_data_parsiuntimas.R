@@ -2,7 +2,7 @@
 # Load packages
 library("TCGAbiolinks")
 library("SummarizedExperiment")
-setwd("/home/ieva/rprojects/TCGA-OV-data/") #wsl
+setwd("~/rprojects/TCGA-OV-data/") #wsl
 
 ## Build your query
 query_TCGA = GDCquery(
@@ -21,9 +21,10 @@ tcga_data <- GDCprepare(query_TCGA, summarizedExperiment = TRUE)
 ## Save clinical data to separate file 
 pheno <- as.data.frame(colData(tcga_data)) 
 #I have since found a more full clinical data on XENA
+
 #############################################################################
 #final saved TCGA-OC data: full file RangedSummarizedExperiment tcga_data and clinical data (colData)
-#might need to remove all of the downloaded files, because it take a tone of space
+#might need to remove all of the downloaded files, because it takes a tone of space
 saveRDS(object = tcga_data,
         file = "tcga_data.RDS",
         compress = FALSE)

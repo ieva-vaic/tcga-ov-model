@@ -18,7 +18,7 @@ res_gtex = cv.glmnet(
   alpha = 0.5,
   family = "binomial"
 )
-res_gtex #atrenka 221
+res_gtex #atrenka 214
 # Getting genes that contribute for the prediction
 res_coef_gtex = coef(res_gtex, s="lambda.min") # the "coef" function returns a sparse matrix
 head(res_coef_gtex) # in a sparse matrix the "." represents the value of zero
@@ -28,6 +28,6 @@ res_coef_gtex = res_coef_gtex[-1]
 res_coef_gtex_names = names(res_coef_gtex) # get names of the (non-zero) variables.
 res_coef_gtex_names 
 ################################################################################
-saveRDS(res_gtex, "elastic_net_model_gtex.RDS")
+saveRDS(res_gtex, "elastic_net_model_gtcga.RDS")
 saveRDS(res_coef_gtex_names, "gtcga_elastic.RDS")
 

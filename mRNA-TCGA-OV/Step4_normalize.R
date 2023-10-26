@@ -8,7 +8,7 @@ library(limma)
 library(DESeq2)
 #get count matrix, rows as genes
 #working with full data!
-setwd("~/rprojects/TCGA-OV-data") #wsl
+setwd("~/rprojects/TCGA-OV-data") 
 
 counts_gtcga <- readRDS("gtcga_final_counts.RDS") #large numeric df with rows as genes
 ##############################################################################
@@ -22,7 +22,6 @@ gsg$allOK #fals tells there are outliers
 
 table(gsg$goodGenes) #false is the number of outliers
 table(gsg$goodSamples) #no outliers
-
 
 # detect outlier samples - hierarchical clustering 
 
