@@ -1,7 +1,6 @@
 #Step10 survival:
 #ONLY TCGA, as only they have the survival data
 #only 214 genes form elastic net
-
 setwd("~/rprojects/TCGA-OV-data") 
 library(glmnet)
 library(tidyverse)
@@ -10,6 +9,7 @@ library(gplots)
 library(survminer)
 library(survivalROC)
 library(data.table)
+library(gridExtra)
 library(timeROC)
 gtex_counts_train <- readRDS("train_gtcga_normcounts_prot.RDS")
 gtex_genes <- readRDS("gtcga_elastic.RDS")
@@ -139,7 +139,6 @@ for (i in seq_along(rez_list)) {
 ###############################################################################
 #other survrocs
 ## METHOD = NNE,  Nearest Neighbor Estimation (NNE)
-surv_df <- read
 coxnet.df10 <- surv_df[, (colnames(surv_df) %in% res_coef_cox_names)]
 dim(coxnet.df10)
 rez_list_10 <- apply(coxnet.df10, 2, survivalROC, Stime = time,
@@ -226,7 +225,7 @@ for (i in seq_along(rez_list_survroc)) {
   dev.off()
 }
 
-rez_table <- data.frame(rez_list_survroc)
+
 #################################################################################
 # kaplan mayer plots
 #separate each gene into high and low expr

@@ -17,8 +17,8 @@ res_coef_cox_names <- res_coef_cox_names$x
 gtex_counts_train <- readRDS("train_gtcga_normcounts_prot.RDS")
 gtex_counts_test <- readRDS("test_gtcga_normcounts_prot.RDS")
 gtex_counts_train <- data.matrix(gtex_counts_train)
-snames = rownames(gtex_counts_train);
-group = substr(snames, 1, 4); #Sets up level information for samples.
+snames = rownames(gtex_counts_train)
+group = substr(snames, 1, 4) #Sets up level information for samples.
 group = as.factor(group)
 gtex_counts_test <- data.matrix(gtex_counts_test)
 
@@ -114,7 +114,7 @@ print(p)
 dev.off()
 }
 
-################################################################################
+###############################################################################
 #boxplotas grupes ar atskiria
 res_coef_cox_names2 <- c(res_coef_cox_names, "grupe")
 gtex_counts_test2 <- as.data.frame(gtex_counts_test)
@@ -132,7 +132,7 @@ gtex_counts_test2 %>% select(res_coef_cox_names2) %>%
   guides(fill=guide_legend(title="Study"))
 dev.off()
 
-#################################################################################
+###############################################################################
 #nne METHOD, test data
 rez_list <- apply(coxnet.df, 2, survivalROC, Stime = time, status = event, 
                   predict.time = cutoff, method="NNE", span = 0.25*nobs^(-0.20))
@@ -333,11 +333,6 @@ rez_list_survroc_test <- apply(coxnet.df, 2, timeROC, T = time,
                                iid=TRUE)
 rez_list_survroc_test
 
-for (i in seq_along(rez_list_survroc33_test)) {
-  png(paste("figures/plot_survroc_test", i, ".png", sep = ""), width=600, height=500, res=120) 
-  plot(rez_list_survroc33_test[[i]],time = 365 )
-  dev.off()
-}
 #############################
 #papildomi KM, iš tų 33
 median(surv_df_test$SNX21)
