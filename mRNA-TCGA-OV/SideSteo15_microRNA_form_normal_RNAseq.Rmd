@@ -20,6 +20,9 @@ library(edgeR)
 library(limma)
 library(DESeq2)
 library(glmnet)
+library(survivalROC)
+library(timeROC)
+library(survival)
 ```
 Starting form step3: tcga and gtex data with all descriptions
 desccriptor colums:1:2, 183:184, 601:603
@@ -280,7 +283,7 @@ cvfit_miR <- cv.glmnet(miR_surv_counts, miR_y, family = "cox", type.measure = "C
 plot(cvfit_miR)
 cvfit_miR #lambda min and max
 ```
-get names for 18 best 1se
+get names for 18 best (1se)
 ```{r}
 coef_x_miR <- coef(cvfit_miR, s = 0.024579) # best 18
 head(coef_x_miR)
@@ -289,6 +292,80 @@ res_coef_cox_names_MIR = names(coef_x_miR) # get names of the (non-zero) variabl
 res_coef_cox_names_MIR #18
 write.csv(res_coef_cox_names_MIR, "mirs_coxnet_names.csv")
 
+```
+Gaunamas sąrašas miR:
+Matytos: MIR429,  MIR10B, MIR145 ,MIR25, 
+RANODMinės:
+MIR6859_1, MIR3605,  MIR4257,   MIR765,    MIR3125,   MIR4263,    
+MIR548I2,  MIR573, MIR7111,  MIR3609, MIR4477B,  MIR4478,
+MIR1244_3, MIR1972_,1 MIR378J,   MIR641
+
+## survroc
+prep matrix:
+```{r}
+#fist I need a matrix with overall survival, cencorship, and genes form elastic net
+clin_miRdf_joined2
+
+rownames(clin_miRdf_joined2) <- clin_miRdf_joined2$barcode
+colnames(clin_miRdf_joined2)
+surv_df_mir <- clin_miRdf_joined2[, c(8, 48, 9:47)] 
+surv_df_mir <- surv_df %>% dplyr::rename(deceased = decesed2, surv_time = overall_survival) 
+write_rds(surv_df_mir, "surv_sf_mir.RDS")
+```
+prep other stuff for surv rock:
+```{r}
+#need these for survrock
+nobs <- NROW(surv_df_mir)
+cutoff <- 365
+
+mir_coxnet_df <- surv_df_mir[, (colnames(surv_df_mir) %in% res_coef_cox_names_MIR)]
+dim(mir_coxnet_df) #334  10 
+
+time <- surv_df_mir$surv_time
+event <- surv_df_mir$deceased
+```
+
+```{r}
+rez_list <- apply(mir_coxnet_df, 2, survivalROC, Stime = time, status = event, predict.time = cutoff, method="KM")
+
+for (i in seq_along(rez_list)) {
+  p =  plot(rez_list[[i]]$FP, rez_list[[i]]$TP, type="l", xlim=c(0,1), ylim=c(0,1),
+            xlab=paste( "FP", "\n", "AUC = ", round(rez_list[[i]]$AUC,3)),
+            ylab="TP",
+            main=paste(names(rez_list)[i],", Method = KM, Year = 1"), )
+  abline(0,1)
+  print(p) 
+}
+```
+dideli (>0,5) AUCs:
+1. miR-6859_1 (0,604)
+2. miR-429 (0,558)
+3. miR4257 (0,547)
+4. miR-3125 (0,525)
+5. miR-548I2 (0,58)
+6. miR-145 (0,536)
+7. miR-7111 (0,612)
+8. miR-3609 (0,596)
+9. miR-25 (0,599)
+10. miR-4477B (0,518)
+11. miR-1244_3 (0,527)
+12. miR-378J (0,562)
+
+## TimeROC
+```{r}
+#visiems genams timeroc
+rez_list_survroc<- apply(mir_coxnet_df, 2, timeROC, T = time,
+                            delta = event, cause=1,weighting="marginal", #cia gali būti "aalen"
+                            times=c(182, 365, 1095, 1825, 3650), #half-year, year, 3, 5, 10 year survivals
+                            iid=TRUE)
+rez_list_survroc
+```
+
+Plots bet be pavadinimu tai is eiles
+```{r}
+for (i in seq_along(rez_list_survroc)) {
+  plot(rez_list_survroc[[i]],time = 365 )
+}
 ```
 
 
