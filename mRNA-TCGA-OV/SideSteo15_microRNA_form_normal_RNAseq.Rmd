@@ -1,0 +1,371 @@
+---
+title: "SideStep15_microRNA_from_normal_RNAseq"
+author: "ieva"
+date: "2023-10-26"
+output: word_document
+---
+This rmd file is for doing analysis of microRNA but not downloading micorRNA 
+specific data, rather filtering for microRNA genes
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = '~/rprojects/TCGA-OV-data')
+```
+Starting libraries
+```{r}
+library(tidyverse)
+library(dendextend)
+library(WGCNA)
+library(GDCRNATools)
+library(edgeR)
+library(limma)
+library(DESeq2)
+library(glmnet)
+library(survivalROC)
+library(timeROC)
+library(survival)
+```
+Starting form step3: tcga and gtex data with all descriptions
+desccriptor colums:1:2, 183:184, 601:603
+```{r}
+gtcga_final <- readRDS("gtcga_final.RDS")
+```
+
+```{r}
+#remove non-miRNA
+biotypes <- table(gtcga_final$gene_biotype, useNA = "a")
+biotypes <- as.data.frame(biotypes)
+biotypes
+gtgca_miRNA <- gtcga_final[(gtcga_final$gene_biotype == "miRNA" ), ]
+#test if split correctly
+dim(gtgca_miRNA) #liko 1573 genu is 55469     
+table(gtgca_miRNA$gene_biotype, useNA = "a") 
+```
+```{r}
+#fix names
+gtgca_miRNA["external_gene_name.y"][gtgca_miRNA["external_gene_name.y"] == ''] <- NA
+any(is.na(gtgca_miRNA$external_gene_name.y))
+gtgca_miRNA <- gtgca_miRNA %>% 
+  mutate(external_gene_name.y = coalesce(external_gene_name.y, Description))  
+any(is.na(gtgca_miRNA$external_gene_name.y))
+#add gene names as rownames
+rownames(gtgca_miRNA) <- gtgca_miRNA$external_gene_name.y
+head(rownames(gtgca_miRNA))
+gtgca_miRNA <- gtgca_miRNA[, -c(1:2, 183:184, 601:603)] 
+saveRDS(gtgca_miRNA, "gtgca_miRNA.RDS")
+```
+Is it even possible to do analysis in such way?
+what is the mean count of eatch microrna?
+```{r}
+means <- rowSums(gtgca_miRNA)
+mean(means) #on average 709 counts
+length(which(means == 0)) #tik 91 miR no expression anywhere
+```
+## Outlier detection
+```{r}
+counts_gtcga_miR <- data.matrix(gtgca_miRNA) 
+dim(counts_gtcga_miR)#19193   596
+# detect outlier genes with gsg
+gsg <- goodSamplesGenes(counts_gtcga_miR) #no transpose, wgcna package
+summary(gsg) #weather there are outliers
+gsg$allOK #fals tells there are outliers
+
+table(gsg$goodGenes) #false is the number of outliers
+table(gsg$goodSamples) #no outliers
+```
+clustering to see outliers
+```{r}
+htree <- hclust(dist(t(gtgca_miRNA)), method = "average") #can take some time 
+png(file="figures/htree_miRNA1.png", height=3000, width=6000) #išsaugijimui didesniu formatu
+plot(htree) #dstant samples should be excluded #save portrait 20x66 inch pdf
+dev.off()
+```
+i will not remove anyone for now
+now for the clustering bewteen projects
+```{r}
+dend <- as.dendrogram(htree)
+col_aa_red <- ifelse(grepl("GTEX", labels(dend)), "red", "blue")
+dend2 <- assign_values_to_leaves_edgePar(dend=dend, value = col_aa_red, edgePar = "col") 
+plot(dend2)
+```
+## Normalize 
+GDC RNA tools, with filter, model added (issitraukus GDC RNA tools funkcija)
+```{r}
+counts <- counts_gtcga_miR
+expr = DGEList(counts = counts)
+expr = calcNormFactors(expr)
+
+snames = colnames(counts_gtcga_miR);
+group = substr(snames, 1, 4); #Sets up level information for samples.
+
+keepALL <- rowSums(cpm(expr) > 1) >= 0.5*ncol(counts)
+nGenes <- as.numeric(summary(keepALL)[2]) + 
+  as.numeric(summary(keepALL)[3])
+nKeep <- summary(keepALL)[3]
+
+cat (paste('Total Number of genes: ', nGenes, '\n', sep=''))
+cat (paste('Number of genes for downstream analysis: ', nKeep, 
+           '\n', sep=''))
+
+exprALL <- expr[keepALL,,keep.lib.sizes = TRUE]
+v_filtered <- voom(exprALL, design= model.matrix(~0 + group), plot = TRUE)$E
+
+saveRDS(v_filtered, "microrna_voom_protein.RDS")
+```
+
+see the normalization and how many genes left
+```{r}
+mRNA_voomt <- t(v_filtered)
+htree_norm <- hclust(dist(mRNA_voomt), method = "average") #can take some time
+dend3 <- as.dendrogram(htree_norm)
+col_aa_red <- ifelse(grepl("GTEX", labels(dend3)), "red", "blue")
+dend3 <- assign_values_to_leaves_edgePar(dend=dend3, value = col_aa_red, edgePar = "col") 
+plot(dend3)
+```
+## Train / test split
+```{r}
+gtcga_miR_counts <- t(v_filtered)
+gtcga_miR_counts <- as.data.frame(gtcga_miR_counts)
+# Set (random-number-generator) seed so that results are consistent between runs
+set.seed(18) #choose favorite number
+train_ids <- rbinom(nrow(gtcga_miR_counts), size = 1, prob = 0.8) ==1 #choose persentage
+#we split clinical data first (probably should be indicated by y instead of x)
+gtex_miR_counts_train = gtcga_miR_counts[train_ids, ] 
+gtex_miR_counts_test  = gtcga_miR_counts[!train_ids, ] 
+
+dim(gtex_miR_counts_train) #489 119
+dim(gtex_miR_counts_test) #106 119
+
+saveRDS(gtex_miR_counts_train, "train_gtcga_normcounts_miR.RDS")
+saveRDS(gtex_miR_counts_test, "test_gtcga_normcounts_miR.RDS")
+```
+split clinical data as well
+```{r}
+pheno <- readRDS("tcga_no_weird_pheno_XENA_TCGA.RDS") #full clinical
+dim(pheno) #416  69
+#the pheno only has the tcga ids, thus the need to filter
+snames_train = rownames(gtex_miR_counts_train);
+tcga_train_ <- grep("TCGA", snames_train)
+tcga_train_ids <- snames_train[tcga_train_]
+pheno_train  = pheno[tcga_train_ids, ]  #336 samples
+dim(pheno_train)
+
+snames_test = rownames(gtex_miR_counts_test);
+tcga_test_ <- grep("TCGA", snames_test)
+tcga_test_ids <- snames_test[tcga_test_]
+pheno_test = pheno[tcga_test_ids, ]  #79 samples
+dim(pheno_test)
+
+#save
+saveRDS(pheno_train, "tcga_pheno_train_MIR.RDS")
+saveRDS(pheno_test, "tcga_pheno_test_MIR.RDS")
+```
+## elastic net
+prep for 1st model
+```{r}
+gtex_miR_counts_train <- data.matrix(gtex_miR_counts_train)
+group = substr(snames_train, 1, 4); #Sets up level information for samples.
+group = as.factor(group)
+```
+model
+```{r}
+#clinical feature: gtex or TCGA data
+res_gtex_miR = cv.glmnet(
+  x = gtex_miR_counts_train,
+  y = group,
+  alpha = 0.5,
+  family = "binomial"
+)
+res_gtex_miR 
+```
+abiem atvejais po 39 atrenka
+```{r}
+plot(res_gtex_miR)
+```
+Getting genes that contribute for the prediction
+```{r}
+res_coef_gtex_miR = coef(res_gtex_miR, s="lambda.min") # the "coef" function returns a sparse matrix
+# get coefficients with non-zero values
+res_coef_gtex_miR = res_coef_gtex_miR[res_coef_gtex_miR[,1] != 0,] 
+res_coef_gtex_miR = res_coef_gtex_miR[-1]
+res_coef_gtex_miR_names = names(res_coef_gtex_miR) # get names of the (non-zero) variables.
+res_coef_gtex_miR_names 
+```
+What about another lambda?
+```{r}
+res_coef_gtex_miR2 = coef(res_gtex_miR, s=0.1) # the "coef" function returns a sparse matrix
+# get coefficients with non-zero values
+res_coef_gtex_miR2 = res_coef_gtex_miR2[res_coef_gtex_miR2[,1] != 0,] 
+res_coef_gtex_miR2 = res_coef_gtex_miR2[-1]
+res_coef_gtex_miR_names2 = names(res_coef_gtex_miR2) # get names of the (non-zero) variables.
+res_coef_gtex_miR_names2 
+```
+save model
+```{r}
+saveRDS(res_gtex_miR, "MIR_elastic_net_model_gtcga.RDS")
+saveRDS(res_coef_gtex_miR_names, "MIRs_gtcga_elastic.RDS")
+```
+
+## coxnet
+Prep 1: get gene matrix with desired 39 miRs
+```{r}
+gtex_miR_elastic <- gtex_miR_counts_train[, colnames(gtex_miR_counts_train) %in% res_coef_gtex_miR_names] 
+
+gtex_miR_elastic <- as.data.frame(t(gtex_miR_elastic))
+gtex_miR_elastic <- gtex_miR_elastic %>%  dplyr::select(starts_with("TCGA")) 
+dim(gtex_miR_elastic) #39mirs 337
+```
+Prep 2: clinical data:
+```{r}
+
+#clinical data
+pheno_train <- readRDS("tcga_pheno_train_MIR.RDS") 
+#337 samples, 69 variables
+
+# survival df
+clin_df = pheno_train[,
+                   c("barcode",
+                     "vital_status",
+                     "days_to_death",
+                     "days_to_last_follow_up",
+                     "neoplasmhistologicgrade",
+                     "STAGE")]
+
+# create a new boolean variable that has TRUE for dead patients and FALSE for live patients
+clin_df$deceased = clin_df$vital_status == "Dead"
+
+# create an "overall survival" variable that is equal to days_to_death
+# for dead patients, and to days_to_last_follow_up for patients who
+# are still alive
+clin_df$overall_survival = ifelse(clin_df$deceased,
+                                  clin_df$days_to_death,
+                                  clin_df$days_to_last_follow_up)
+# remove 1 patient with STAGE I
+clin_df[which(clin_df$STAGE == "Stage I"), "STAGE"] = NA
+table(clin_df$STAGE, useNA = "a")
+
+saveRDS(clin_df, "pheno_survival_onlyMIRS.RDS")
+```
+add all miRS to clin_df
+```{r}
+gtex_Mirs_df<- as.data.frame(t(gtex_miR_elastic))
+colnames(clin_df)
+gtex_Mirs_df$barcode <- rownames(gtex_Mirs_df)
+clin_miRdf_joined <- left_join(clin_df, gtex_Mirs_df, by = "barcode")
+#gene names cannot have weird symbols for coxnet
+colnames(clin_miRdf_joined) <- gsub("[.]", "_", colnames(clin_miRdf_joined)) 
+colnames(clin_miRdf_joined) <- gsub("[-]", "_", colnames(clin_miRdf_joined)) 
+```
+Prep 3: things needed for coxnet function
+```{r}
+#COXNET!
+clin_miRdf_joined2 <- clin_miRdf_joined %>% drop_na(overall_survival) %>% drop_na(deceased) #lost 2 cases
+clin_miRdf_joined2$decesed2 <- as.integer(as.logical(clin_miRdf_joined2$deceased))
+time <- clin_miRdf_joined2$overall_survival
+status <- clin_miRdf_joined2$decesed2
+miR_y <- clin_miRdf_joined2[ ,c(8,7)]
+names(miR_y) <- c("time", "status")
+miR_y <- as.matrix(miR_y)
+head(miR_y)
+miR_surv_counts <- clin_miRdf_joined2[, 9:47] #pasirinkti norimas mir
+```
+cox_fit - visas lambdas ismeta
+```{r}
+cox_fitx_miRS <- glmnet(miR_surv_counts, miR_y, family="cox")
+cox_fitx_miRS
+plot(cox_fitx_miRS)
+cox_fitx_miRS
+```
+cv.glmnet - min ir max + paveikslas - takes more time
+```{r}
+miR_surv_counts <- as.matrix(miR_surv_counts)
+set.seed(5)
+cvfit_miR <- cv.glmnet(miR_surv_counts, miR_y, family = "cox", type.measure = "C") #takes some time
+plot(cvfit_miR)
+cvfit_miR #lambda min and max
+```
+get names for 18 best (1se)
+```{r}
+coef_x_miR <- coef(cvfit_miR, s = 0.024579) # best 18
+head(coef_x_miR)
+coef_x_miR = coef_x_miR[coef_x_miR[,1] != 0,] 
+res_coef_cox_names_MIR = names(coef_x_miR) # get names of the (non-zero) variables.
+res_coef_cox_names_MIR #18
+write.csv(res_coef_cox_names_MIR, "mirs_coxnet_names.csv")
+
+```
+Gaunamas sąrašas miR:
+Matytos: MIR429,  MIR10B, MIR145 ,MIR25, 
+RANODMinės:
+MIR6859_1, MIR3605,  MIR4257,   MIR765,    MIR3125,   MIR4263,    
+MIR548I2,  MIR573, MIR7111,  MIR3609, MIR4477B,  MIR4478,
+MIR1244_3, MIR1972_,1 MIR378J,   MIR641
+
+## survroc
+prep matrix:
+```{r}
+#fist I need a matrix with overall survival, cencorship, and genes form elastic net
+clin_miRdf_joined2
+
+rownames(clin_miRdf_joined2) <- clin_miRdf_joined2$barcode
+colnames(clin_miRdf_joined2)
+surv_df_mir <- clin_miRdf_joined2[, c(8, 48, 9:47)] 
+surv_df_mir <- surv_df %>% dplyr::rename(deceased = decesed2, surv_time = overall_survival) 
+write_rds(surv_df_mir, "surv_sf_mir.RDS")
+```
+prep other stuff for surv rock:
+```{r}
+#need these for survrock
+nobs <- NROW(surv_df_mir)
+cutoff <- 365
+
+mir_coxnet_df <- surv_df_mir[, (colnames(surv_df_mir) %in% res_coef_cox_names_MIR)]
+dim(mir_coxnet_df) #334  10 
+
+time <- surv_df_mir$surv_time
+event <- surv_df_mir$deceased
+```
+
+```{r}
+rez_list <- apply(mir_coxnet_df, 2, survivalROC, Stime = time, status = event, predict.time = cutoff, method="KM")
+
+for (i in seq_along(rez_list)) {
+  p =  plot(rez_list[[i]]$FP, rez_list[[i]]$TP, type="l", xlim=c(0,1), ylim=c(0,1),
+            xlab=paste( "FP", "\n", "AUC = ", round(rez_list[[i]]$AUC,3)),
+            ylab="TP",
+            main=paste(names(rez_list)[i],", Method = KM, Year = 1"), )
+  abline(0,1)
+  print(p) 
+}
+```
+dideli (>0,5) AUCs:
+1. miR-6859_1 (0,604)
+2. miR-429 (0,558)
+3. miR4257 (0,547)
+4. miR-3125 (0,525)
+5. miR-548I2 (0,58)
+6. miR-145 (0,536)
+7. miR-7111 (0,612)
+8. miR-3609 (0,596)
+9. miR-25 (0,599)
+10. miR-4477B (0,518)
+11. miR-1244_3 (0,527)
+12. miR-378J (0,562)
+
+## TimeROC
+```{r}
+#visiems genams timeroc
+rez_list_survroc<- apply(mir_coxnet_df, 2, timeROC, T = time,
+                            delta = event, cause=1,weighting="marginal", #cia gali būti "aalen"
+                            times=c(182, 365, 1095, 1825, 3650), #half-year, year, 3, 5, 10 year survivals
+                            iid=TRUE)
+rez_list_survroc
+```
+
+Plots bet be pavadinimu tai is eiles
+```{r}
+for (i in seq_along(rez_list_survroc)) {
+  plot(rez_list_survroc[[i]],time = 365 )
+}
+```
+
+
